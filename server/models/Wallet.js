@@ -1,18 +1,16 @@
 const mongoose = require('mongoose')
 
-const utils = require('./utils')
-
 const WalletSchema = new mongoose.Schema({
-  walletId: {type: String, required: true},
-  userId: {type: ObjectId, required: true},
+  walletId: {type: String, required: true, index: true},
+  userId: {type: mongoose.Schema.ObjectId, required: true, index: true},
   walletName: {type: String, required: true},
-  network: {type: String, enum: utils.networkTypes},
-  walletAuth: {type: String, required: true}
+  network: {type: String, required: true},
+  walletCredentials: {type: String, required: true}
 })
 
 WalletSchema.methods.toWalletObject = function() {
   let wallet = this.toObject()
-  delete wallet.walletAuth
+  delete wallet.walletCredentials
   delete wallet.__v
   return wallet
 }
