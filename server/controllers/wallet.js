@@ -48,48 +48,37 @@ exports.createWallet = (req, res, next) => {
 }
 
 exports.getWallets = (req, res, next) => {
-  Wallet.find({userId: req.user._id})
-    .then(wallets => {
-      let response = []
+  console.log(req.wallets)
+  let response = []
 
-      async.forEach(wallets, (wallet, cb) => {
-        try {
-          const walletClient = walletUtil.get(wallet.walletCredentials)
-          async.parallel({
-            balance: (cb) => {
-              walletUtil.getBalance(walletClient)
-                .then(balance => cb(null, balance))
-                .catch(err => cb(err))
-            },
-            transactions: (cb) => {
-              walletUtil.getTransactions(walletClient)
-                .then(transactions => cb(null, transactions))
-                .catch(err => cb(err))
-            }
-          }, (err, results) => {
-            if(err) cb(err)
-            const detailedWallet = Object.assign({}, wallet.toWalletObject(), {
-              balance: results.balance,
-              transactions: results.transactions
-            })
-            console.log('response pushed')
-            console.log(detailedWallet)
-            response.push(detailedWallet)
-            cb()
-          })
-        }
-        catch (e) {
-          cb(err)
-        }
-      }, (err) => {
-        if(err) {
-          return next(err)
-        }
-        if(!wallets[0]) return next('Something is wrong with the bitcoin network')
-        return res.status(201).json(response)
+  async.forEach(req.wallets, (wallet, cb) => {
+    async.parallel({
+      balance: (cb) => {
+        walletUtil.getBalance(wallet.client)
+          .then(balance => cb(null, balance))
+          .catch(err => cb(err))
+      },
+      transactions: (cb) => {
+        walletUtil.getTransactions(wallet.client)
+          .then(transactions => cb(null, transactions))
+          .catch(err => cb(err))
+      }
+    }, (err, results) => {
+      if(err) cb(err)
+      const detailedWallet = Object.assign({}, wallet.details.toWalletObject(), {
+        balance: results.balance,
+        transactions: results.transactions
       })
+      response.push(detailedWallet)
+      cb()
     })
-    .catch(err => next(err))
+  }, (err) => {
+    if(err) {
+      return next(err)
+    }
+    if(!response[0]) return next('Something is wrong with the bitcoin network')
+    return res.status(201).json(response)
+  })
 }
 
 exports.getWallet = (req, res, next) => {

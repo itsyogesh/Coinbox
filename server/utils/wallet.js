@@ -1,4 +1,4 @@
-const client = require('../config/bitcore')
+const client = require('../config/bitcore').client
 
 const NUMBER_OF_COPAYERS = 1
 
