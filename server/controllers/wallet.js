@@ -82,35 +82,40 @@ exports.getWallets = (req, res, next) => {
 }
 
 exports.getWallet = (req, res, next) => {
-  Wallet.findOne({_id: req.params.walletId})
-    .then((wallet) => {
-      try {
-        const walletClient = walletUtil.get(wallet.walletCredentials)
 
-        async.parallel({
-          balance: (cb) => {
-            walletUtil.getBalance(walletClient)
-              .then(balance => cb(null, balance))
-              .catch(err => cb(err))
-          },
-          transactions: (cb) => {
-            walletUtil.getTransactions(walletClient)
-              .then(transactions => cb(null, transactions))
-              .catch(err => cb(err))
-          }
-        }, (err, results) => {
-          if(err) return next(err)
-          const response =  Object.assign({}, wallet.toWalletObject(), {
-            balance: results.balance,
-            transactions: results.transactions
-          })
-          return res.status(200).json(response)
-        })
-      }
+  const walletIds = req.wallets.map((wallet) => {
+    return wallet.details._id.toString()
+  })
+  
+  if(walletIds.indexOf(req.params.walletId) > -1) {
 
-      catch (e) {
-        return next('Something is wrong with the bitcoin network')
+    const walletClient = req.wallets[walletIds.indexOf(req.params.walletId)].client
+    const walletDetails = req.wallets[walletIds.indexOf(req.params.walletId)].details
+
+    async.parallel({
+      balance: (cb) => {
+        walletUtil.getBalance(walletClient)
+          .then(balance => cb(null, balance))
+          .catch(err => cb(err))
+      },
+      transactions: (cb) => {
+        walletUtil.getTransactions(walletClient)
+          .then(transactions => cb(null, transactions))
+          .catch(err => cb(err))
       }
+    }, (err, results) => {
+      if(err) return next(err)
+      const response =  Object.assign({}, walletDetails.toWalletObject(), {
+        balance: results.balance,
+        transactions: results.transactions
+      })
+      return res.status(200).json(response)
     })
-    .catch(err => next(err))
+  }
+  else {
+    let err = new Error('Wallet not available')
+    err.statusCode = 404
+    err.details = (`No wallet with id ${req.params.walletId}`)
+    return next(err)
+  }
 }

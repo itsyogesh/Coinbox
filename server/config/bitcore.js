@@ -21,7 +21,6 @@ const walletMiddleware = (req, res, next) => {
             details: wallet,
             client: walletClient
           }
-          console.log(detailedWallet)
           response.push(detailedWallet)
           cb()
         }
