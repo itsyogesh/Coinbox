@@ -83,14 +83,8 @@ exports.getWallets = (req, res, next) => {
 
 exports.getWallet = (req, res, next) => {
 
-  const walletIds = req.wallets.map((wallet) => {
-    return wallet.details._id.toString()
-  })
-  
-  if(walletIds.indexOf(req.params.walletId) > -1) {
-
-    const walletClient = req.wallets[walletIds.indexOf(req.params.walletId)].client
-    const walletDetails = req.wallets[walletIds.indexOf(req.params.walletId)].details
+  const walletClient = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).client
+  const walletDetails = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).client
 
     async.parallel({
       balance: (cb) => {
