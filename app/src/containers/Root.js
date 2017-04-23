@@ -32,7 +32,7 @@ class Root extends Component {
 Root.propTypes = {
   isAuthenticated: PropTypes.bool.isRequired,
   checkAuth: PropTypes.func.isRequired,
-  fetchUser = PropTypes.func.isRequired
+  fetchUser: PropTypes.func.isRequired
 }
 
 const mapStateToProps = (state) => ({
