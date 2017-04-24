@@ -3,8 +3,6 @@ import { LOGIN as constants } from '../../config/constants'
 import { setAuthToken } from './token'
 import API from '../../api'
 
-console.log(API)
-
 const request = (credentials) => {
   return {
     type: constants.REQUEST,

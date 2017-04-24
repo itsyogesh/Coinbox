@@ -41,7 +41,7 @@ const Navbar = (props) => {
 Navbar.propTypes = {
   user: PropTypes.object,
   inverted: PropTypes.bool,
-  type: PropTypes.strring,
+  type: PropTypes.string,
   children: PropTypes.node
 }
 
