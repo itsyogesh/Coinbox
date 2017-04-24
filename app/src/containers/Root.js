@@ -6,6 +6,8 @@ import { fetchUser } from '../actions/user'
 
 import Landing from '../components/Landing'
 import Dashboard from './Dashboard'
+import Signup from '../components/Signup'
+import Login from '../components/Login'
 
 class Root extends Component {
 
@@ -24,6 +26,8 @@ class Root extends Component {
     return (
       <Switch>
         <Route exact path='/' component={isAuthenticated ? Dashboard : Landing} />
+        <Route path='/signup' component={Signup} />
+        <Route path='/login' component={Login} />
       </Switch>
     )
   }

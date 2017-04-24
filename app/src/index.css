@@ -22,3 +22,22 @@ h3.ui.header.landing-sub-header {
 .text-center {
   text-align: center;
 }
+
+.block-container {
+  margin-top: 3em;
+  margin-bottom: 3em;
+  background-color: #fff;
+}
+
+.margin-top {
+  margin-top: 2em;
+}
+
+.padding-top {
+  padding-top: 2em;
+}
+
+.inverted-bg {
+  background-color: #ECEEF1;
+  min-height: 100vh;
+}

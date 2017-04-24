@@ -26,7 +26,7 @@ const Navbar = (props) => {
             <Menu.Menu position='right'>
               <Menu.Item as={NavLink} to='/explore'>Explore</Menu.Item>
               <Menu.Item href='//github.com/itsyogesh/Coinbox' target='_blank'>Github</Menu.Item>
-              <Menu.Item as={NavLink} to='/explore'>Sign in</Menu.Item>
+              <Menu.Item as={NavLink} to='/login'>Sign in</Menu.Item>
               <Menu.Item>
                 <Button as={Link} to='/signup' inverted>Sign up</Button>
               </Menu.Item>
