@@ -22,8 +22,8 @@ exports.createWallet = (req, res, next) => {
   async.waterfall([
     (next) => {
       walletUtil.create(req.body.name, req.user.email)
-        .then((client) => next(null, client))
-        .catch((err) => next(err))
+      .then((client) => next(null, client))
+      .catch((err) => next(err))
     },
     (client, next) => {
       const { credentials } = client
@@ -35,10 +35,10 @@ exports.createWallet = (req, res, next) => {
         walletCredentials: client.export()
       })
       wallet.save()
-        .then((wallet) => {
-          next(null, wallet.toWalletObject())
-        })
-        .catch(err => next(err))
+      .then((wallet) => {
+        next(null, wallet.toWalletObject())
+      })
+      .catch(err => next(err))
     }
   ], (err, wallet) => {
 
@@ -55,13 +55,13 @@ exports.getWallets = (req, res, next) => {
     async.parallel({
       balance: (cb) => {
         walletUtil.getBalance(wallet.client)
-          .then(balance => cb(null, balance))
-          .catch(err => cb(err))
+        .then(balance => cb(null, balance))
+        .catch(err => cb(err))
       },
       transactions: (cb) => {
         walletUtil.getTransactions(wallet.client)
-          .then(transactions => cb(null, transactions))
-          .catch(err => cb(err))
+        .then(transactions => cb(null, transactions))
+        .catch(err => cb(err))
       }
     }, (err, results) => {
       if(err) cb(err)
@@ -84,32 +84,32 @@ exports.getWallets = (req, res, next) => {
 exports.getWallet = (req, res, next) => {
 
   const walletClient = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).client
-  const walletDetails = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).client
+  const walletDetails = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).details
 
-    async.parallel({
-      balance: (cb) => {
-        walletUtil.getBalance(walletClient)
-          .then(balance => cb(null, balance))
-          .catch(err => cb(err))
-      },
-      transactions: (cb) => {
-        walletUtil.getTransactions(walletClient)
-          .then(transactions => cb(null, transactions))
-          .catch(err => cb(err))
-      }
-    }, (err, results) => {
-      if(err) return next(err)
-      const response =  Object.assign({}, walletDetails.toWalletObject(), {
-        balance: results.balance,
-        transactions: results.transactions
-      })
-      return res.status(200).json(response)
-    })
-  }
-  else {
+  if(!walletClient || !walletDetails) {
     let err = new Error('Wallet not available')
     err.statusCode = 404
     err.details = (`No wallet with id ${req.params.walletId}`)
     return next(err)
   }
+
+  async.parallel({
+    balance: (cb) => {
+      walletUtil.getBalance(walletClient)
+      .then(balance => cb(null, balance))
+      .catch(err => cb(err))
+    },
+    transactions: (cb) => {
+      walletUtil.getTransactions(walletClient)
+      .then(transactions => cb(null, transactions))
+      .catch(err => cb(err))
+    }
+  }, (err, results) => {
+    if(err) return next(err)
+    const response =  Object.assign({}, walletDetails.toWalletObject(), {
+      balance: results.balance,
+      transactions: results.transactions
+    })
+    return res.status(200).json(response)
+  })
 }

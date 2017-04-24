@@ -16,13 +16,13 @@ const JWTOptions = {
 const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
   User.findOne({ email }, (err, user) => {
     if (err) done(err)
-    if(!user) {
-      return done(null, false, { error: 'Your details could not be verified'})
+    if (!user) {
+      return done(null, false, {error: 'Your details could not be verified'})
     }
     user.comparePassword(password, (err, isMatch) => {
-      if(err) return done(err)
-      if(!isMatch) {
-        return done(null, false, { error: 'Your details could not be verified'})
+      if (err) return done(err)
+      if (!isMatch) {
+        return done(null, false, {error: 'Your details could not be verified'})
       }
       return done(null, user)
     })

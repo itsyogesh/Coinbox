@@ -4,7 +4,8 @@
   "description": "A bitcoin wallet implementation",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint **/*.js"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   },
   "homepage": "https://github.com/itsyogesh/Coinbox#readme",
   "dependencies": {
+    "bcrypt": "^1.0.2",
     "bitcore-wallet-client": "^5.1.2",
     "blockchain.info": "^2.6.0",
     "body-parser": "^1.17.1",
@@ -31,5 +33,12 @@
     "passport": "^0.3.2",
     "passport-jwt": "^2.2.1",
     "passport-local": "^1.0.0"
+  },
+  "devDependencies": {
+    "eslint-config-standard": "^10.2.1",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-node": "^4.2.2",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-standard": "^3.0.1"
   }
 }

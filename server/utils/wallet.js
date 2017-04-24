@@ -11,7 +11,7 @@ const create = (name, email) => {
       NUMBER_OF_COPAYERS,
       {network: process.env.BITCOIN_NETWORK},
       (err, secret) => {
-        if(err) return reject(err)
+        if (err) return reject(err)
         return resolve(client)
       }
     )
@@ -26,7 +26,7 @@ const get = (credentials) => {
 const getBalance = (client) => {
   return new Promise((resolve, reject) => {
     client.getBalance({}, (err, balance) => {
-      if(err) {
+      if (err) {
         reject(err)
       } else {
         resolve(balance)
@@ -38,7 +38,7 @@ const getBalance = (client) => {
 const getTransactions = (client) => {
   return new Promise((resolve, reject) => {
     client.getTxHistory({}, (err, transactions) => {
-      if(err) {
+      if (err) {
         reject(err)
       } else {
         resolve(transactions)
@@ -47,17 +47,17 @@ const getTransactions = (client) => {
   })
 }
 
-const getSelectedWallet(wallets, walletId) => {
+const getSelectedWallet = (wallets, walletId) => {
   const walletIds = wallets.map((wallet) => {
     return wallet.details._id.toString()
   })
 
-  if(walletIds.indexOf(req.params.walletId) > -1) {
+  if (walletIds.indexOf(walletId) > -1) {
     return {
-      client: wallets[walletIds.indexOf(walletId)].client
+      client: wallets[walletIds.indexOf(walletId)].client,
       details: wallets[walletIds.indexOf(walletId)].details
     }
-
+  }
 }
 
 const createSendTransaction = (client, options) => {
@@ -71,7 +71,7 @@ const createSendTransaction = (client, options) => {
       message: options.message || null
     }
     client.createTxProposal(opts, (err, transactionId) => {
-      if(err) {
+      if (err) {
         reject(err)
       } else {
         publishTransactionProposal(client, transactionId)
@@ -90,7 +90,7 @@ const createSendTransaction = (client, options) => {
   })
 }
 
-const publishTransactionProposal => (client, transactionId) => {
+const publishTransactionProposal = (client, transactionId) => {
   return new Promise((resolve, reject) => {
     client.publishTxProposal({txp: transactionId}, (err, txp) => {
       if (err) {
@@ -102,7 +102,7 @@ const publishTransactionProposal => (client, transactionId) => {
   })
 }
 
-const signTransactionProposal => (client, transactionId) => {
+const signTransactionProposal = (client, transactionId) => {
   return new Promise((resolve, reject) => {
     client.signTxProposal(transactionId, (err, txp) => {
       if (err) {
@@ -114,19 +114,7 @@ const signTransactionProposal => (client, transactionId) => {
   })
 }
 
-const signTransactionProposal => (client, transactionId) => {
-  return new Promise((resolve, reject) => {
-    client.signTxProposal(transactionId, (err, txp) => {
-      if (err) {
-        reject(err)
-      } else {
-        return Promise.resolve()
-      }
-    })
-  })
-}
-
-const broadcastTransactionProposal => (client, transactionId) => {
+const broadcastTransactionProposal = (client, transactionId) => {
   return new Promise((resolve, reject) => {
     client.broadcastTxProposal(transactionId, (err, txp, memo) => {
       if (err) {

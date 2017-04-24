@@ -12,52 +12,52 @@ function generateWebToken(user){
 
 
 exports.register = (req, res, next) => {
-   let { user, errors } = validateUser(req.body)
+  let { errors, user } = validateUser(req.body)
 
-   series({
-     isUser: done => {
-       checkUser(req.body.email)
-        .then(isUser => { done(null, isUser) })
-        .catch(err => { done(err) })
-     },
-     token: done => {
-       generateEmailToken()
-        .then(token => { done(null, token) })
-        .catch(err => { done(err) })
-     }
-   }, (err, results) => {
-     if(err) {
-       return next(err)
-     }
-     if(results.isUser) errors['email'] = 'Email is already in use'
+  series({
+    isUser: done => {
+      checkUser(req.body.email)
+      .then(isUser => { done(null, isUser) })
+      .catch(err => { done(err) })
+    },
+    token: done => {
+      generateEmailToken()
+      .then(token => { done(null, token) })
+      .catch(err => { done(err) })
+    }
+  }, (err, results) => {
+    if(err) {
+      return next(err)
+    }
+    if(results.isUser) errors['email'] = 'Email is already in use'
 
-     if(Object.keys(errors).length){
-       let err = new Error('Invalid data')
-       err.statusCode = 422
-       err.details = errors
-       return next(err)
-     }
+    if(Object.keys(errors).length){
+      let err = new Error('Invalid data')
+      err.statusCode = 422
+      err.details = errors
+      return next(err)
+    }
 
-     user['token'] = {}
-     user.token['emailToken'] = results.token
-     let mongoUser = new User(user)
-     mongoUser.save()
-      .then(user => {
-        user = user.toUserObject()
-        const webToken = generateWebToken({
-          email: user.email,
-          _id: user._id
-        })
-        res.status(201).json({
-          user,
-          token: `JWT ${webToken}`
-         })
+    user['token'] = {}
+    user.token['emailToken'] = results.token
+    let mongoUser = new User(user)
+    mongoUser.save()
+    .then(user => {
+      user = user.toUserObject()
+      const webToken = generateWebToken({
+        email: user.email,
+        _id: user._id
       })
-      .catch(err => {
-        return next(err)
+      res.status(201).json({
+        user,
+        token: `JWT ${webToken}`
       })
-   })
- }
+    })
+    .catch(err => {
+      return next(err)
+    })
+  })
+}
 
 exports.login = (req, res, next) => {
   passport.authenticate('local', {session: false}, (err, user, info) => {
@@ -67,17 +67,17 @@ exports.login = (req, res, next) => {
       message: info.error
     })
     User.findById(user._id)
-      .then((user) => {
-        user = user.toUserObject()
-        const webToken = generateWebToken({
-          email: user.email,
-          _id: user._id
-        })
-        return res.status(200).json({
-          user,
-          token: `JWT ${webToken}`
-        })
+    .then((user) => {
+      user = user.toUserObject()
+      const webToken = generateWebToken({
+        email: user.email,
+        _id: user._id
       })
+      return res.status(200).json({
+        user,
+        token: `JWT ${webToken}`
+      })
+    })
   })(req, res, next)
 }
 
