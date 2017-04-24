@@ -8,7 +8,7 @@ const WalletSchema = new mongoose.Schema({
   walletCredentials: {type: String, required: true}
 })
 
-WalletSchema.methods.toWalletObject = function() {
+WalletSchema.methods.toWalletObject = function () {
   let wallet = this.toObject()
   delete wallet.walletCredentials
   delete wallet.__v

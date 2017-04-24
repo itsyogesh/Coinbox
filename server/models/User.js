@@ -28,7 +28,7 @@ const UserSchema = new mongoose.Schema({
   token: {
     password: {
       resetToken: {type: String},
-      createdAt: {type: Date},
+      createdAt: {type: Date}
     },
     emailToken: {type: String}
   },
@@ -38,10 +38,9 @@ const UserSchema = new mongoose.Schema({
   }
 })
 
-
-UserSchema.pre('save', function (next){
+UserSchema.pre('save', function (next) {
   const SALT_FACTOR = 5
-  if(!this.isModified('password')) next()
+  if (!this.isModified('password')) next()
 
   bcrypt.genSalt(SALT_FACTOR)
     .then((salt) => {
@@ -55,24 +54,24 @@ UserSchema.pre('save', function (next){
     .catch(err => next(err))
 })
 
-UserSchema.methods.validateResetToken = function(token) {
-  const expiresIn = 2 //2 days, need to move this.
+UserSchema.methods.validateResetToken = function (token) {
+  const expiresIn = 2 // 2 days, need to move this.
   var now = new Date()
   const isValid = (this.token.resetToken === token && (now - this.createDate) > expiresIn)
   return isValid
 }
 
-UserSchema.methods.toUserObject = function() {
+UserSchema.methods.toUserObject = function () {
   let user = this.toObject()
   delete user.password
-  if(user.token) delete user.token
+  if (user.token) delete user.token
   delete user.__v
   return user
 }
 
-UserSchema.methods.comparePassword = function(validatePassword, cb) {
-  bcrypt.compare(validatePassword, this.password, function(err, isMatch) {
-    if(err) return cb(err)
+UserSchema.methods.comparePassword = function (validatePassword, cb) {
+  bcrypt.compare(validatePassword, this.password, function (err, isMatch) {
+    if (err) return cb(err)
 
     cb(null, isMatch)
   })

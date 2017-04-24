@@ -1,18 +1,16 @@
 const async = require('async')
-const validator = require('validator')
 
 const walletUtil = require('../utils/wallet')
 const Wallet = require('../models/Wallet')
 
-
 exports.createWallet = (req, res, next) => {
   let errors = {}
 
-  if(!req.body.name) {
+  if (!req.body.name) {
     errors['name'] = 'Name is required'
   }
 
-  if(Object.keys(errors).length) {
+  if (Object.keys(errors).length) {
     let err = new Error('Invalid data')
     err.statusCode = 422
     err.details = errors
@@ -41,8 +39,7 @@ exports.createWallet = (req, res, next) => {
       .catch(err => next(err))
     }
   ], (err, wallet) => {
-
-    if(err) return next(err)
+    if (err) return next(err)
     res.status(201).json(wallet)
   })
 }
@@ -64,7 +61,7 @@ exports.getWallets = (req, res, next) => {
         .catch(err => cb(err))
       }
     }, (err, results) => {
-      if(err) cb(err)
+      if (err) cb(err)
       const detailedWallet = Object.assign({}, wallet.details.toWalletObject(), {
         balance: results.balance,
         transactions: results.transactions
@@ -73,20 +70,19 @@ exports.getWallets = (req, res, next) => {
       cb()
     })
   }, (err) => {
-    if(err) {
+    if (err) {
       return next(err)
     }
-    if(!response[0]) return next('Something is wrong with the bitcoin network')
+    if (!response[0]) return next('Something is wrong with the bitcoin network')
     return res.status(201).json(response)
   })
 }
 
 exports.getWallet = (req, res, next) => {
-
   const walletClient = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).client
   const walletDetails = walletUtil.getSelectedWallet(req.wallets, req.params.walletId).details
 
-  if(!walletClient || !walletDetails) {
+  if (!walletClient || !walletDetails) {
     let err = new Error('Wallet not available')
     err.statusCode = 404
     err.details = (`No wallet with id ${req.params.walletId}`)
@@ -105,8 +101,8 @@ exports.getWallet = (req, res, next) => {
       .catch(err => cb(err))
     }
   }, (err, results) => {
-    if(err) return next(err)
-    const response =  Object.assign({}, walletDetails.toWalletObject(), {
+    if (err) return next(err)
+    const response = Object.assign({}, walletDetails.toWalletObject(), {
       balance: results.balance,
       transactions: results.transactions
     })

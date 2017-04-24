@@ -6,10 +6,9 @@ const series = require('async/series')
 
 const User = require('../models/User')
 
-function generateWebToken(user){
+function generateWebToken (user) {
   return JWT.sign(user, process.env.SECRET)
 }
-
 
 exports.register = (req, res, next) => {
   let { errors, user } = validateUser(req.body)
@@ -26,12 +25,12 @@ exports.register = (req, res, next) => {
       .catch(err => { done(err) })
     }
   }, (err, results) => {
-    if(err) {
+    if (err) {
       return next(err)
     }
-    if(results.isUser) errors['email'] = 'Email is already in use'
+    if (results.isUser) errors['email'] = 'Email is already in use'
 
-    if(Object.keys(errors).length){
+    if (Object.keys(errors).length) {
       let err = new Error('Invalid data')
       err.statusCode = 422
       err.details = errors
@@ -61,11 +60,13 @@ exports.register = (req, res, next) => {
 
 exports.login = (req, res, next) => {
   passport.authenticate('local', {session: false}, (err, user, info) => {
-    if(err) return next(err)
-    if(!user) return next({
-      statusCode: 401,
-      message: info.error
-    })
+    if (err) return next(err)
+    if (!user) {
+      return next({
+        statusCode: 401,
+        message: info.error
+      })
+    }
     User.findById(user._id)
     .then((user) => {
       user = user.toUserObject()
@@ -82,53 +83,53 @@ exports.login = (req, res, next) => {
 }
 
 const generateEmailToken = () => {
-  return new Promise(function(resolve, reject) {
-    crypto.randomBytes(20, function(err, buf) {
-      if(err) {
+  return new Promise(function (resolve, reject) {
+    crypto.randomBytes(20, function (err, buf) {
+      if (err) {
         reject(err)
-        return;
+        return
       }
       resolve(buf.toString('hex'))
     })
-  });
+  })
 }
 
 const checkUser = (email) => {
-  return new Promise(function(resolve, reject) {
+  return new Promise(function (resolve, reject) {
     User.findOne({email}, (err, existingUser) => {
-      if(err) {
+      if (err) {
         reject(err)
-        return;
+        return
       }
-      resolve(existingUser ? true : false)
+      resolve(!!existingUser)
     })
-  });
+  })
 }
 
-validateUser = (body) => {
+const validateUser = (body) => {
   let errors = {}
   let user = {}
   user['profile'] = {}
 
-  if(!body.email || !validator.isEmail(validator.trim(body.email))) {
+  if (!body.email || !validator.isEmail(validator.trim(body.email))) {
     errors['email'] = 'Invalid email'
   } else {
     user['email'] = validator.trim(body.email)
   }
 
-  if(!body.password) {
+  if (!body.password) {
     errors['password'] = 'Invalid password'
   } else {
     user['password'] = body.password
   }
 
-  if(!body.firstName || !validator.isAlpha(validator.trim(body.firstName))) {
+  if (!body.firstName || !validator.isAlpha(validator.trim(body.firstName))) {
     errors['firstName'] = 'Invalid first name.'
   } else {
     user.profile['firstName'] = validator.trim(body.firstName)
   }
 
-  if(!body.lastName || !validator.isAlpha(validator.trim(body.lastName))) {
+  if (!body.lastName || !validator.isAlpha(validator.trim(body.lastName))) {
     errors['lastName'] = 'Invalid last name.'
   } else {
     user.profile['lastName'] = validator.trim(body.lastName)
