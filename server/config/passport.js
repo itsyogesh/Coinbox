@@ -31,9 +31,9 @@ const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
 
 const JWTLogin = new JWTStrategy(JWTOptions, (payload, done) => {
   User.findById(payload._id, (err, user) => {
-    if(err) return done(err)
+    if (err) return done(err)
 
-    if(user) return done(null, user)
+    if (user) return done(null, user)
     else return done(null, false)
   })
 })

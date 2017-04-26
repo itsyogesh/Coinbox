@@ -1,8 +1,16 @@
 # Coinbox - A bitcoin wallet
 
+#### Updates
+
+From now onwards, I will be adding a GIF that show the development of the app.
+
+##### App Screenshot
+
+![App Screenshot](https://media.giphy.com/media/Q30kFTewPGXSw/giphy.gif)
+
 ### Getting started
 
-The app is divided into two distinct parts. The `app` folder represents the frontend code written in React whereas the `server` folder represents a thin wrapper over (bitcore-wallet-client)[https://github.com/bitpay/bitcore-wallet-client] with user authentication and additional functionalities.
+The app is divided into two distinct parts. The `app` folder represents the frontend code written in React whereas the `server` folder represents a thin wrapper over [bitcore-wallet-client](https://github.com/bitpay/bitcore-wallet-client) with user authentication and additional functionalities.
 
 To get started, clone the app:
 ```
