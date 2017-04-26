@@ -41,3 +41,65 @@ h3.ui.header.landing-sub-header {
   background-color: #ECEEF1;
   min-height: 100vh;
 }
+
+.ui.fluid.container.dashboard {
+  min-height: 100vh;
+}
+
+.ui.grid.dashboard-content {
+  min-height: 100vh;
+}
+
+.ui.basic.segment.sidebar-nav {
+  background-color: #FFF;
+  min-height: 100%;
+}
+
+.header.user-dropdown p {
+  font-weight: 400;
+  text-transform: none;
+}
+
+.ui.basic.segment.sidebar-nav a.item {
+  padding: 1em 0;
+}
+
+.ui.basic.segment.sidebar-nav a.item:active {
+  color: rgba(118, 73, 237, 0.8)
+}
+
+.ui.basic.segment.sidebar-nav a.item:hover {
+  color: rgba(118, 73, 237, 0.8)
+}
+
+.ui.basic.segment.sidebar-nav .item>i.icon {
+  margin: 0 .7em 0 0
+}
+
+.ui.fluid.card.dashboard-content-card .card-header {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+
+.ui.fluid.card.dashboard-content-card .card-header .card-header-heading {
+  color: rgba(118, 73, 237, 0.8);
+  font-weight: 600;
+  font-size: 1.4rem;
+  padding: .3em;
+}
+
+.content.portfolio h2.header {
+  font-size: 3rem;
+  font-weight: normal;
+  color: rgba(0,0,0, .6)
+}
+
+.ui.divider.card-divider {
+  margin: 0 -1em;
+  border-top: 0.8px solid rgba(0,0,0,.8);
+}
+
+.ui.basic.segment.portfolio-item-content .header {
+  color: rgba(0,0,0, .6);
+  font-weight: 600;
+}
