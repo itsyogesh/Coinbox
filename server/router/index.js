@@ -3,7 +3,7 @@ const authController = require('../controllers/auth')
 const userController = require('../controllers/user')
 const walletController = require('../controllers/wallet')
 const passport = require('../config/passport')
-const walletMiddleware = require('../middleware/walletMiddleware')
+const middleware = require('../middleware')
 
 module.exports = (app) => {
   const APIRoutes = express.Router()
@@ -20,8 +20,8 @@ module.exports = (app) => {
 
   APIRoutes.use('/wallets', walletRoutes)
   walletRoutes.post('/', passport.isAuthenticated, walletController.createWallet)
-  walletRoutes.get('/', passport.isAuthenticated, walletMiddleware, walletController.getWallets)
-  walletRoutes.get('/:walletId', passport.isAuthenticated, walletMiddleware, walletController.getWallet)
+  walletRoutes.get('/', passport.isAuthenticated, middleware.wallet, walletController.getWallets)
+  walletRoutes.get('/:walletId', passport.isAuthenticated, middleware.wallet, walletController.getWallet)
 
   app.use('/api', APIRoutes)
 }

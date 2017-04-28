@@ -1,6 +1,6 @@
 <mjml>
   <mj-head>
-  <mj-title>Winter 2017 PMACS Newsletter</mj-title>
+  <mj-title>Email Confirmation - Coinbox</mj-title>
   <mj-attributes>
     <mj-all />
     <mj-text font-size="16" />
@@ -12,12 +12,10 @@
     <mj-container background-color='#f3f3f3'>
 
       <!-- Coinbox Header -->
-      <mj-section padding-bottom='0' background-color='#7649ED'>
+      <mj-section padding-bottom='0'>
         <mj-column width='100%'>
-          <mj-image src='https://image.ibb.co/fDQxT5/logo_primary.png' width='150' />
+          <mj-image src='https://image.ibb.co/khHiJ5/logo_primary.png' width='150' />
           <mj-divider
-            horizontal-spacing="0"
-            vertical-spacing="0"
             padding-top="20"
             padding-bottom="0"
             padding-left="0"
@@ -27,14 +25,41 @@
           />
         </mj-column>
       </mj-section>
-      <mj-wrapper border-radius='2' background-color='white' padding='50px 30px'>
+      <mj-wrapper border-radius='5' background-color='white' padding='20px 50px'>
         <mj-section>
-          <mj-text align="center" font-size="20" color="rgb(165, 176, 184)">
-            Verify your email address
-          </mj-text>
-        </mj-column>
-        <mj-
+          <mj-column width='100%'>
+            <mj-text align="center" font-size="20" color="rgb(165, 176, 184)">
+              Welcome to Coinbox
+            </mj-text>
+            <mj-divider
+                border-width="1px"
+                border-color="#f8f8f8"
+              />
+            <mj-text align="center" font-size="16" color="rgb(165, 176, 184)">
+              Verify your email address
+            </mj-text>
+            <mj-spacer height='20px' />
+            <mj-text align='left' color='#0e0e0e' font-size='14'>
+              Yes, we know. <br/>An email to confirm an email. <br/><br />
+              In order to start using your Coinbox account, you need to validate your email address.
+            </mj-text>
+            <mj-spacer height='30px' />
+            <mj-button background-color="#7649ED" font-size='16px' padding='5px 0px' href="{{ VERIFY_EMAIL }}">
+              Verify Email
+            </mj-button>
+            <mj-text font-size='10px' color='rgb(165, 176, 184)'>
+              If you did not sign up for this account you can ignore this email and the account will be deleted.
+            </mj-text>
+      </mj-column>
+    </mj-section>
       </mj-wrapper>
+      <mj-section>
+        <mj-column>
+          <mj-text font-size='10px' align='center' color='rgb(100, 100, 100)'>
+              © Coinbox 2017
+            </mj-text>
+        </mj-column>
+      </mj-section>
     </mj-container>
   </mj-body>
 </mjml>
