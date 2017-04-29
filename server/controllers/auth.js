@@ -5,6 +5,8 @@ const passport = require('passport')
 const series = require('async/series')
 
 const User = require('../models/User')
+const queue = require('../queue/worker')
+const constants = require('../../utils/constants').jobNames
 
 function generateWebToken (user) {
   return JWT.sign(user, process.env.SECRET)
@@ -43,6 +45,15 @@ exports.register = (req, res, next) => {
     mongoUser.save()
     .then(user => {
       user = user.toUserObject()
+      queue.now(constants.DEFAULT_WALLET, {
+        email: user.email,
+        userId: user._id
+      })
+      queue.now(constants.CONFIRM_EMAIL, {
+        email: user.email,
+        token: results.token,
+        firstName: user.profile.firstName
+      })
       const webToken = generateWebToken({
         email: user.email,
         _id: user._id

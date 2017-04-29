@@ -2,6 +2,7 @@ const ejs = require('ejs') // eslint-disable-line no-unused-vars
 
 const mailgun = require('../../config/mailgun')
 const constants = require('../../utils/constants').emailConstants
+const jobConstants = require('../../utils/constants').jobNames
 
 const generateEmailParams = (options) => {
   return {
@@ -17,7 +18,7 @@ const generateEmailParams = (options) => {
 }
 
 module.exports = (agenda) => {
-  agenda.define('confirmation email', (job, done) => {
+  agenda.define(jobConstants.CONFIRM_EMAIL, (job, done) => {
     const data = job.attrs.data
     let emailOptions = generateEmailParams({
       to: {
