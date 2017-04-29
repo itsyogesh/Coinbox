@@ -46,9 +46,9 @@ You can follow the progress of the app here.
 - [x] User login
 - [x] Automatic Login if token
 - [ ] Forgot Password
-- [ ] Dashboard - Home
+- [x] Dashboard - Home
 - [ ] Navbar - authenticated
-- [ ] Dashboard - Sidebar
+- [x] Dashboard - Sidebar
 - [ ] Dashboard - Send Bitcoin
 - [ ] Dashboard - Receive Bitcoin
 - [ ] Dashboard - Settings
@@ -60,7 +60,7 @@ You can follow the progress of the app here.
 - [x] API - Create Wallet
 - [ ] Queue - Create default wallet on signup
 - [ ] Queue - Create default address on wallet creation ( Still needs some rethinking)
-- [ ] Queue - Confirmation email
+- [x] Queue - Confirmation email
 - [ ] Queue - Forgot Password email
 - [ ] API - Forgot Password
 - [x] API - Fetch User
