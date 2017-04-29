@@ -40,11 +40,12 @@
             </mj-text>
             <mj-spacer height='20px' />
             <mj-text align='left' color='#0e0e0e' font-size='14'>
+              Hi <%= firstName %> <br/><br/>
               Yes, we know. <br/>An email to confirm an email. <br/><br />
               In order to start using your Coinbox account, you need to validate your email address.
             </mj-text>
             <mj-spacer height='30px' />
-            <mj-button background-color="#7649ED" font-size='16px' padding='5px 0px' href="{{ VERIFY_EMAIL }}">
+            <mj-button background-color="#7649ED" font-size='16px' padding='5px 0px' href="//coinbox.xyz/verify?type=email&token=<%= token %>">
               Verify Email
             </mj-button>
             <mj-text font-size='10px' color='rgb(165, 176, 184)'>
