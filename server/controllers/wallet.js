@@ -45,7 +45,6 @@ exports.createWallet = (req, res, next) => {
 }
 
 exports.getWallets = (req, res, next) => {
-  console.log(req.wallets)
   let response = []
 
   async.forEach(req.wallets, (wallet, cb) => {

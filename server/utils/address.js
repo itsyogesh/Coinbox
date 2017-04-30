@@ -1,5 +1,5 @@
 
-const createAddress = (client) => {
+const create = (client) => {
   if (!client) {
     let error = new Error('Wallet client required')
     return Promise.reject(error)
@@ -12,4 +12,4 @@ const createAddress = (client) => {
   })
 }
 
-exports.createAddress = createAddress
+exports.create = create

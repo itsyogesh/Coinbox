@@ -10,19 +10,11 @@ module.exports = (agenda) => {
     const data = job.attrs.data
     async.waterfall([
       (next) => {
-        walletUtil.create('Default', data.email)
-          .then((client) => {
-            console.log(client)
-            return next(null, client)
-          })
+        walletUtil.create(constants.DEFAULT_WALLET_NAME, data.email)
+          .then((client) => next(null, client))
           .catch((err) => next(err))
       },
       (client, next) => {
-        addressUtil.create(client)
-          .then((address) => next(null, client, address))
-          .catch((err) => next(err))
-      },
-      (client, address, next) => {
         const { credentials } = client
         let wallet = new Wallet({
           walletId: credentials.walletId,
@@ -33,13 +25,13 @@ module.exports = (agenda) => {
         })
         wallet.save()
           .then((wallet) => {
-            next(null, client, wallet.toWalletObject())
+            next(null, client)
           })
           .catch(err => next(err))
       },
-      (client, wallet, next) => {
-        addressUtil.createAddress(client)
-          .then((address) => next(null, {wallet, address}))
+      (client, next) => {
+        addressUtil.create(client)
+          .then((address) => next(null, address))
           .catch((err) => next(err))
       }
     ], done)

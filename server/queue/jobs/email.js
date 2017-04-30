@@ -31,7 +31,15 @@ module.exports = (agenda) => {
         token: data.token
       }
     })
-    mailgun.sendMail(emailOptions, done)
+    mailgun.sendMail(emailOptions, (err, info) => {
+      if (err) {
+        console.log(err)
+        return done(err)
+      } else {
+        console.log(info)
+        return done(null, info)
+      }
+    })
   })
 
   agenda.define('reset password', (job, done) => {

@@ -5,7 +5,6 @@ const NUMBER_OF_COPAYERS = 1
 
 const create = (name, email) => {
   return new Promise((resolve, reject) => {
-    console.log('-------- Inside create wallet ------------')
     let client = new Client(clientConfig)
     client.createWallet(
       name,
@@ -15,7 +14,6 @@ const create = (name, email) => {
       {network: process.env.BITCOIN_NETWORK},
       (err, secret) => {
         if (err) return reject(err)
-        console.log(client)
         return resolve(client)
       }
     )
