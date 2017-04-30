@@ -1,8 +1,4 @@
-const Client = require('bitcore-wallet-client')
-
-let client = new Client({
+module.exports = {
   baseUrl: process.env.BWS_INSTANCE_URL,
   verbose: false
-})
-
-module.exports = client
+}

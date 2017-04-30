@@ -7,11 +7,14 @@ const constants = require('../../utils/constants').jobNames
 
 module.exports = (agenda) => {
   agenda.define(constants.DEFAULT_WALLET, (job, done) => {
-    const data = job.data.attrs
+    const data = job.attrs.data
     async.waterfall([
       (next) => {
         walletUtil.create('Default', data.email)
-          .then((client) => next(null, client))
+          .then((client) => {
+            console.log(client)
+            return next(null, client)
+          })
           .catch((err) => next(err))
       },
       (client, next) => {

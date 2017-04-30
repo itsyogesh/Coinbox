@@ -6,7 +6,7 @@ const series = require('async/series')
 
 const User = require('../models/User')
 const queue = require('../queue/worker')
-const constants = require('../../utils/constants').jobNames
+const constants = require('../utils/constants').jobNames
 
 function generateWebToken (user) {
   return JWT.sign(user, process.env.SECRET)

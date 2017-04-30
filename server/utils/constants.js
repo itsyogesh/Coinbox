@@ -3,7 +3,7 @@ const path = require('path')
 exports.emailConstants = {
   ACCOUNTS_FROM: 'account@coinbox.xyz',
   CONFIRM_EMAIL_SUBJECT: 'Verify your Coinbox Account',
-  CONFIRM_EMAIL_TEMPLATE_PATH: path.resolve(__dirname, 'templates', 'email', 'confirmEmail.html')
+  CONFIRM_EMAIL_TEMPLATE_PATH: path.resolve(__dirname, '../templates', 'email', 'confirmEmail.html')
 }
 
 exports.jobNames = {

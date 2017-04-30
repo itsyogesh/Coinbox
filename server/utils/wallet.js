@@ -1,9 +1,12 @@
-const client = require('../config/bitcore')
+const clientConfig = require('../config/bitcore')
+const Client = require('bitcore-wallet-client')
 
 const NUMBER_OF_COPAYERS = 1
 
 const create = (name, email) => {
   return new Promise((resolve, reject) => {
+    console.log('-------- Inside create wallet ------------')
+    let client = new Client(clientConfig)
     client.createWallet(
       name,
       email,
@@ -12,6 +15,7 @@ const create = (name, email) => {
       {network: process.env.BITCOIN_NETWORK},
       (err, secret) => {
         if (err) return reject(err)
+        console.log(client)
         return resolve(client)
       }
     )
@@ -19,6 +23,7 @@ const create = (name, email) => {
 }
 
 const get = (credentials) => {
+  let client = new Client(clientConfig)
   client.import(credentials)
   return client
 }
