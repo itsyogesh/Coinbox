@@ -18,6 +18,8 @@ connectDB()
 
 const app = express()
 
+app.set('trust proxy', true)
+
 app.use(passport.initialize())
 
 app.use(bodyParser.urlencoded({extended: false}))

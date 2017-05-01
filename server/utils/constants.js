@@ -11,3 +11,7 @@ exports.jobNames = {
   DEFAULT_WALLET: 'create default wallet',
   DEFAULT_WALLET_NAME: 'Personal Wallet'
 }
+
+exports.global = {
+  DEFAULT_COUNTRY_CODE: 'IN'
+}

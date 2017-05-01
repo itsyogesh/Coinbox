@@ -2,6 +2,7 @@ const express = require('express')
 const authController = require('../controllers/auth')
 const userController = require('../controllers/user')
 const walletController = require('../controllers/wallet')
+const fiatRatesController = require('../controllers/fiatCurrency')
 const passport = require('../config/passport')
 const middleware = require('../middleware')
 
@@ -10,6 +11,7 @@ module.exports = (app) => {
   const walletRoutes = express.Router()
   const authRoutes = express.Router()
   const userRoutes = express.Router()
+  const fiatRates = express.Router()
 
   APIRoutes.use('/', authRoutes)
   authRoutes.post('/signup', authController.register)
@@ -17,6 +19,9 @@ module.exports = (app) => {
 
   APIRoutes.use('/', userRoutes)
   userRoutes.get('/profile', passport.isAuthenticated, userController.profile)
+
+  APIRoutes.use('/rates', fiatRates)
+  fiatRates.get('/', fiatRatesController.getRates)
 
   APIRoutes.use('/wallets', walletRoutes)
   walletRoutes.post('/', passport.isAuthenticated, walletController.createWallet)
