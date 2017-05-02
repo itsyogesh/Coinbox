@@ -12,7 +12,6 @@ exports.getRates = (req, res, next) => {
       } else {
         countryUtil.getCurrencyCodeFromIP(req.ip)
           .then((countryData) => {
-            console.log('---- In ip currency ----', countryData)
             return next(null, countryData.code)
           })
           .catch(err => next(err))
