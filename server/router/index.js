@@ -22,6 +22,8 @@ module.exports = (app) => {
 
   APIRoutes.use('/rates', fiatRates)
   fiatRates.get('/', fiatRatesController.getRates)
+  fiatRates.get('/locate', fiatRatesController.getRatesByIP)
+  fiatRates.get('/:currencyCode', fiatRatesController.getRate)
 
   APIRoutes.use('/wallets', walletRoutes)
   walletRoutes.post('/', passport.isAuthenticated, walletController.createWallet)

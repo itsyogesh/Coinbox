@@ -33,9 +33,8 @@ router(app)
 
 app.use((err, req, res, next) => {
   if (req.app.get('env') !== 'development') {
-    console.log(err)
   }
-  console.log(err)
+  // console.log(err)
   return res.status(err.statusCode || 500).json({
     errors: {
       message: (err.message) ? err.message : 'Something went wrong',

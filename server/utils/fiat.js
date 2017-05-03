@@ -7,11 +7,13 @@ exports.getFiatRate = (currency, timestamp) => {
     const RATES_API = `${constants.BITPAY_API}/rates/${currency}`
     request.get(RATES_API)
       .then((res) => {
-        try {
-          const rate = JSON.parse(res.text)
-          return resolve(rate)
-        } catch (err) {
-          return reject(err)
+        if (res.ok) {
+          try {
+            const rate = JSON.parse(res.text)
+            return resolve(rate)
+          } catch (err) {
+            return reject(err)
+          }
         }
       })
       .catch((err) => reject(err))
@@ -23,13 +25,15 @@ exports.getFiatRates = () => {
     const RATES_API = `${constants.BITPAY_API}/rates`
     request.get(RATES_API)
     .then((res) => {
-      try {
-        const rates = JSON.parse(res.text)
-        return resolve(rates)
-      } catch (err) {
-        return reject(err)
+      if (res.ok) {
+        try {
+          const rate = JSON.parse(res.text)
+          return resolve(rate)
+        } catch (err) {
+          return reject(err)
+        }
       }
     })
-      .catch((err) => reject(err))
+    .catch((err) => reject(err))
   })
 }

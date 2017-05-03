@@ -37,8 +37,6 @@ const getCurrencyCodeFromCountry = (countryCode) => {
   return new Promise((resolve, reject) => {
     countryCurrencyMap()
     .then((data) => {
-      console.log(countryCode)
-      console.log(data)
       if (data[countryCode]) {
         return resolve(data[countryCode])
       } else {

@@ -3,27 +3,44 @@ const async = require('async')
 const fiatUtil = require('../utils/fiat')
 const countryUtil = require('../utils/country')
 
-exports.getRates = (req, res, next) => {
-  const currencyCode = req.query.code
+exports.getRate = (req, res, next) => {
+  const currencyCode = req.params.currencyCode
   async.waterfall([
     next => {
-      if (currencyCode) {
-        next(null, currencyCode)
-      } else {
-        countryUtil.getCurrencyCodeFromIP(req.ip)
-          .then((countryData) => {
-            return next(null, countryData.code)
-          })
-          .catch(err => next(err))
-      }
+      fiatUtil.getFiatRate(currencyCode, req.query.ts || Date.now())
+        .then(rate => next(null, rate))
+        .catch(err => next(err))
+    }
+  ], (err, rate) => {
+    if (err) return next(err)
+    return res.status(200).json(rate)
+  })
+}
+
+exports.getRates = (req, res, next) => {
+  fiatUtil.getFiatRates()
+    .then(rates => {
+      return res.status(200).json(rates)
+    })
+    .catch(err => next(err))
+}
+
+exports.getRatesByIP = (req, res, next) => {
+  async.waterfall([
+    next => {
+      countryUtil.getCurrencyCodeFromIP(req.ip)
+        .then((countryData) => {
+          return next(null, countryData.code)
+        })
+        .catch(err => next(err))
     },
     (currencyCode, next) => {
       fiatUtil.getFiatRate(currencyCode, req.query.ts || Date.now())
-        .then(rates => next(null, rates))
+        .then(rate => next(null, rate))
         .catch(err => next(err))
     }
-  ], (err, rates) => {
+  ], (err, rate) => {
     if (err) return next(err)
-    return res.status(200).json(rates)
+    return res.status(200).json(rate)
   })
 }
