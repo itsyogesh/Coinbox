@@ -16,6 +16,64 @@ const fetchAllSuccess = (wallets) => {
   }
 }
 
-const fetchAllError = (error) => {
-  
+const fetchAllError = (message) => {
+  return {
+    type: constants.FETCH_ALL_ERROR,
+    isLoading: false,
+    message
+  }
+}
+
+const fetchRequest = (walletId) => {
+  return {
+    type: constants.FETCH_REQUEST,
+    isLoading: true,
+    walletId
+  }
+}
+
+const fetchSuccess = (wallet) => {
+  return {
+    type: constants.FETCH_SUCCESS,
+    isLoading: false,
+    wallet
+  }
+}
+
+const fetchError = (message) => {
+  return {
+    type: constants.FETCH_ERROR,
+    isLoading: false,
+    message
+  }
+}
+
+export const fetchAllWallets = () => {
+  return (dispatch) => {
+    dispatch(fetchAllRequest())
+
+    return API.fetchWallets()
+      .then(response => {
+        if(response.statusText !== 'OK') {
+          return Promise.reject(response)
+        } else {
+          dispatch(fetchSuccess(response.data))
+        }
+      })
+  }
+}
+
+export const fetchWallet = (walletId) => {
+  return (dispatch) => {
+    dispatch(fetchRequest(walletId))
+
+    return API.fetchWallet(walletId)
+      .then(response => {
+        if(response.statusText !== 'OK') {
+          return Promise.reject(response)
+        } else {
+          dispatch(fetchSuccess(response.data))
+        }
+      })
+  }
 }

@@ -15,8 +15,21 @@ const login = ({email, password}) => {
   })
 }
 
+const fetchWallets = () => {
+  return defaultAPI.get(`/wallets`)
+}
+
+const fetchWallet = (walletId) => {
+  return defaultAPI.get(`/wallets/${walletId}`)
+}
+
 const fetchUser = () => {
   return defaultAPI.get('/profile')
+}
+
+const fetchFiatRates = (currencyCode) => {
+  const params = currencyCode ? {code: currencyCode} : null
+  return defaultAPI.get('/rates', {params})
 }
 
 const setAuthHeaders = (token) => {
