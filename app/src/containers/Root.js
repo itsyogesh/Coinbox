@@ -4,6 +4,7 @@ import { Switch, Route } from 'react-router-dom'
 import { connect } from 'react-redux'
 import { checkAuth } from '../actions/auth/token'
 import { fetchUser } from '../actions/user'
+import { fetchFiatRateFromIP } from '../actions/rates'
 
 import Landing from '../components/Landing'
 import Dashboard from './Dashboard'
@@ -14,11 +15,12 @@ class Root extends Component {
 
   componentDidMount() {
     this.props.checkAuth()
+    this.props.fetchFiatRateFromIP()
   }
 
   componentWillReceiveProps(nextProps) {
-    if(nextProps.isAuthenticated !== this.props.isAuthenticated) {
-      this.props.fetchUser()
+    if(!nextProps.isAuthenticated) {
+      this.props.checkAuth()
     }
   }
 
@@ -37,11 +39,13 @@ class Root extends Component {
 Root.propTypes = {
   isAuthenticated: PropTypes.bool.isRequired,
   checkAuth: PropTypes.func.isRequired,
-  fetchUser: PropTypes.func.isRequired
+  fetchUser: PropTypes.func.isRequired,
+  fetchFiatRateFromIP: PropTypes.func.isRequired
 }
 
 const mapStateToProps = (state) => ({
-  isAuthenticated: state.isAuthenticated
+  isAuthenticated: state.isAuthenticated,
+  user: state.user.details
 })
 
-export default connect(mapStateToProps, { checkAuth, fetchUser })(Root)
+export default connect(mapStateToProps, { checkAuth, fetchUser, fetchFiatRateFromIP })(Root)

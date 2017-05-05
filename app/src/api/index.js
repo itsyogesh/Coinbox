@@ -51,6 +51,6 @@ export default {
   fetchWallet,
   fetchFiatRates,
   fetchFiatRate,
-  fetchFiatRateFromIP
+  fetchFiatRateFromIP,
   setAuthHeaders
 }
