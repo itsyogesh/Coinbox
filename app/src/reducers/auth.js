@@ -7,6 +7,9 @@ const auth = (state = false, action) => {
     case constants.SET:
       return action.isAuthenticated
 
+    case constants.USER_AUTHENTICATED:
+      return action.isAuthenticated
+
     case constants.REMOVE:
       return action.isAuthenticated
 

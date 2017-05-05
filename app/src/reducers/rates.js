@@ -1,7 +1,7 @@
 import { FIAT_RATES as constants } from '../config/constants'
 
 const initialState = {
-  loading: true,
+  isLoading: true,
   defaultCurrency: 'INR'
 }
 
@@ -13,7 +13,7 @@ const normalizeRates = (rates) => {
   return ratesObj
 }
 
-const addCurrencyToRates = (newRate, rates) => {
+const addCurrencyToRates = (rates, newRate) => {
   return Object.assign({}, rates, {[newRate.code]: newRate})
 }
 
@@ -70,6 +70,9 @@ const rates = (state = initialState, action) => {
     return Object.assign({}, state, {
       defaultCurrency: action.currency
     })
+
+    default:
+      return state
   }
 }
 

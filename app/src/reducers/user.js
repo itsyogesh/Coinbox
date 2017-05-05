@@ -1,7 +1,7 @@
 import {LOGIN as loginConstants} from '../config/constants'
 import {SIGNUP as signupConstants} from '../config/constants'
 import {USER as userConstants} from '../config/constants'
-
+import {LOGOUT as logoutConstants} from '../config/constants'
 const initialState = {
   isLoading: false
 }
@@ -49,6 +49,9 @@ const user = (state = initialState, action) => {
       return Object.assign({}, state, {
         details: action.user
       })
+
+    case logoutConstants.SUCCESS:
+      return initialState
 
     default:
       return state
