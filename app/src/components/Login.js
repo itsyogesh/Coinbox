@@ -15,7 +15,8 @@ class Login extends Component {
     password: '',
     errors: {},
     loading: false,
-    done: false
+    done: false,
+    isAuthenticated: false
   }
 
   handleChange = (e, { name, value }) => {
@@ -28,15 +29,15 @@ class Login extends Component {
       email: this.state.email,
       password: this.state.password
     }
-    console.log('credentials', credentials)
     this.props.loginAction(credentials)
-    .catch((err) => {
-      console.log(err)
-    })
+  }
+
+  componentWillReceiveProps(nextProps){
+    this.setState({isAuthenticated: nextProps.isAuthenticated})
   }
 
   render() {
-    if(this.props.isAuthenticated) return (
+    if(this.state.isAuthenticated || this.state.done) return (
       <Redirect to='/' />
     )
     else {
