@@ -41,7 +41,7 @@ const login = (credentials) => {
           dispatch(setAuthToken(response.data.token))
           dispatch(receive(response.data.user))
         }
-      }).catch(err => console.log(`Errors: ${err}`))
+      })
   }
 }
 

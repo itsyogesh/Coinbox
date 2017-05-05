@@ -105,9 +105,9 @@ export const fetchFiatRate = (currencyCode) => {
 
 export const fetchFiatRateFromIP = () => {
   return (dispatch) => {
-    dispatch(fetchFromIPRequest(currencyCode))
+    dispatch(fetchFromIPRequest())
 
-    API.fetchFiatRateFromIP(currencyCode)
+    API.fetchFiatRateFromIP()
       .then((response) => {
         if(response.statusText !== 'OK') {
           dispatch(fetchFromIPError(response.data))
@@ -122,7 +122,7 @@ export const fetchFiatRateFromIP = () => {
 export const setCurrentCurrency = (currency) => {
   return dispatch => {
     dispatch({
-      type: SET_DEFAULT_CURRENCY,
+      type: constants.SET_DEFAULT_CURRENCY,
       currency
     })
   }
