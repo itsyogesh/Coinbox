@@ -33,12 +33,14 @@ class Login extends Component {
   }
 
   componentWillReceiveProps(nextProps){
-    this.setState({isAuthenticated: nextProps.isAuthenticated})
+    if(this.props.isAuthenticated !== nextProps.isAuthenticated) {
+      this.setState({isAuthenticated: nextProps.isAuthenticated})
+    }
   }
 
   render() {
-    if(this.state.isAuthenticated || this.state.done) return (
-      <Redirect to='/' />
+    if(this.state.isAuthenticated) return (
+      <Redirect to='/' exact/>
     )
     else {
       return(
@@ -82,7 +84,7 @@ Login.propTypes = {
 
 const mapStateToProps = (state) => {
   return {
-    isAuthenticated: state.isAuthenticated
+    isAuthenticated: state.user.isAuthenticated
   }
 }
 
