@@ -2,6 +2,7 @@ import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { Switch, Route } from 'react-router-dom'
 import { connect } from 'react-redux'
+import { Container, Segment, Dimmer, Loader } from 'semantic-ui-react'
 import { checkAuth } from '../actions/auth/token'
 import { fetchUser } from '../actions/user'
 import { fetchFiatRateFromIP } from '../actions/rates'
@@ -19,20 +20,37 @@ class Root extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    if(!nextProps.isAuthenticated) {
+    if(nextProps.user.isAuthenticated !== nextProps.user.isAuthenticated) {
       this.props.checkAuth()
     }
   }
 
   render() {
-    const isAuthenticated = this.props.isAuthenticated
-    return (
-      <Switch>
-        <Route exact path='/' component={isAuthenticated ? Dashboard : Landing} />
-        <Route path='/signup' component={Signup} />
-        <Route path='/login' component={Login} />
-      </Switch>
-    )
+    if (this.props.user.isAuthToken && this.props.user.isLoading) {
+      return (
+        <Container fluid className='loading'>
+          <Dimmer active inverted>
+            <Loader size='large' />
+          </Dimmer>
+        </Container>
+      )
+    }
+
+    else if (!this.props.user.isLoading && this.props.user.isAuthenticated) {
+      return (
+        <Route path='/' component={Dashboard} />
+      )
+    }
+
+    else {
+      return (
+        <Switch>
+          <Route exact path='/' component={Landing} />
+          <Route path='/signup' component={Signup} />
+          <Route path='/login' component={Login} />
+        </Switch>
+      )
+    }
   }
 }
 
@@ -44,8 +62,8 @@ Root.propTypes = {
 }
 
 const mapStateToProps = (state) => ({
-  isAuthenticated: state.isAuthenticated,
-  user: state.user.details
+  isAuthenticated: state.user.isAuthenticated,
+  user: state.user
 })
 
 export default connect(mapStateToProps, { checkAuth, fetchUser, fetchFiatRateFromIP })(Root)
