@@ -7,6 +7,7 @@ export const setAuthToken = (token) => {
   API.setAuthHeaders(token)
   return {
     type: constants.SET,
+    isAuthToken: true,
     isAuthenticated: true
   }
 }
@@ -18,10 +19,18 @@ export const setAuthenticated = () => {
   }
 }
 
+export const checkAuthTokenInStorage = () => {
+  return {
+    type: constants.AUTH_TOKEN_PRESENT,
+    isAuthToken: true
+  }
+}
+
 export const removeAuthToken = () => {
   localStorage.removeItem('token')
   return {
     type: constants.REMOVE,
+    isAuthToken: false,
     isAuthenticated: false
   }
 }
@@ -29,6 +38,7 @@ export const removeAuthToken = () => {
 export const checkAuth = () => {
   return (dispatch, getState) => {
     if (localStorage.getItem('token')) {
+      dispatch(checkAuthTokenInStorage())
       API.setAuthHeaders(localStorage.getItem('token'))
       dispatch(fetchUser())
     }

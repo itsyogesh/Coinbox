@@ -20,6 +20,7 @@ export const fetchError = (message) => {
 export const fetchSuccess = (user) => {
   return {
     type: constants.FETCH_SUCCESS,
+    isLoading: false,
     user
   }
 }

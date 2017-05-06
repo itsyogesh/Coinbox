@@ -6,8 +6,7 @@ import API from '../../api'
 const request = (userDetails) => {
   return {
     type: constants.REQUEST,
-    isLoading: true,
-    userDetails
+    isLoading: true
   }
 }
 
