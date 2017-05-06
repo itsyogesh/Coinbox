@@ -103,3 +103,9 @@ h3.ui.header.landing-sub-header {
   color: rgba(0,0,0, .6);
   font-weight: 600;
 }
+
+.ui.segment.basic.loading {
+  height: 100vh;
+  width: 100vh;
+  background-color: #fff;
+}
