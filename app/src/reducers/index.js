@@ -5,7 +5,6 @@ import authReducer from './auth'
 import ratesreducer from './rates'
 
 const App = combineReducers({
-  isAuthenticated: authReducer,
   user: userReducer,
   rates: ratesreducer
 })
