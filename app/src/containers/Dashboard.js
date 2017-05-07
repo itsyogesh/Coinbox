@@ -8,6 +8,7 @@ import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import DashboardContent from '../components/DashboardContent'
 import SendMoney from '../components/SendMoney'
+import WalletPage from '../components/WalletPage'
 
 class Dashboard extends Component {
   state = {
@@ -34,6 +35,7 @@ class Dashboard extends Component {
               <Route exact path='/' component={DashboardContent} />
               <Route path='/dashboard' component={DashboardContent} />
               <Route path='/send' component={SendMoney} />
+              <Route path='/wallets' component={WalletPage} />
             </Grid.Column>
           </Grid>
       </Container>
