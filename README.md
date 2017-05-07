@@ -41,16 +41,21 @@ You can follow the progress of the app here.
 
 - [x] Landing page
 - [x] Navbar - not authenticated
+- [x] Fetch fiat rates from backend.
 - [ ] Showing intial bitcoin value based on user ip
 - [x] User signup
 - [x] User login
 - [x] Automatic Login if token
 - [ ] Forgot Password
 - [x] Dashboard - Home
-- [ ] Navbar - authenticated
+- [x] Navbar - authenticated
+- [x] Fetch navbar details from store
 - [x] Dashboard - Sidebar
-- [ ] Dashboard - Send Bitcoin
+- [x] Dashboard - Send Bitcoin
 - [ ] Dashboard - Receive Bitcoin
+- [x] Dashboard - Wallet
+- [x] Fetch wallet details from backend
+- [ ] Connect wallet UI with data.
 - [ ] Dashboard - Settings
 
 #### Backend
@@ -58,14 +63,14 @@ You can follow the progress of the app here.
 - [x] API - User signup
 - [x] API - User login
 - [x] API - Create Wallet
-- [ ] Queue - Create default wallet on signup
-- [ ] Queue - Create default address on wallet creation ( Still needs some rethinking)
+- [x] Queue - Create default wallet on signup
+- [x] Queue - Create default address on wallet creation ( Still needs some rethinking)
 - [x] Queue - Confirmation email
 - [ ] Queue - Forgot Password email
 - [ ] API - Forgot Password
 - [x] API - Fetch User
 - [x] API - Fetch user wallet details
-- [ ] API - Get fiat rates
-- [ ] API - Send fiat rates based on ip country currency
+- [x] API - Get fiat rates
+- [x] API - Send fiat rates based on ip country currency
 
 I will keep on updating the tasks as I come across any challenges or if the above ones need further breaking down.
