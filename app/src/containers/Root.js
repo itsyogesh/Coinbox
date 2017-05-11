@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { Switch, Route } from 'react-router-dom'
 import { connect } from 'react-redux'
-import { Container, Segment, Dimmer, Loader } from 'semantic-ui-react'
+import { Container, Segment } from 'semantic-ui-react'
 import { checkAuth } from '../actions/auth/token'
 import { fetchUser } from '../actions/user'
 import { fetchFiatRateFromIP } from '../actions/rates'
@@ -11,6 +11,7 @@ import Landing from '../components/Landing'
 import Dashboard from './Dashboard'
 import Signup from '../components/Signup'
 import Login from '../components/Login'
+import Loader from '../components/Loader'
 
 class Root extends Component {
 
@@ -28,11 +29,7 @@ class Root extends Component {
   render() {
     if (this.props.user.isAuthToken && this.props.user.isLoading) {
       return (
-        <Container fluid className='loading'>
-          <Dimmer active inverted>
-            <Loader size='large' />
-          </Dimmer>
-        </Container>
+        <Loader className="loading-main" />
       )
     }
 

@@ -13,7 +13,8 @@ import WalletPage from '../components/WalletPage'
 class Dashboard extends Component {
   state = {
     user: this.props.user,
-    isAuthenticated: this.props.isAuthenticated
+    isAuthenticated: this.props.isAuthenticated,
+    isLoading: true
   }
 
   componentWillReceiveProps(nextProps) {

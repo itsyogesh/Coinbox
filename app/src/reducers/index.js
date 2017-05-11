@@ -1,11 +1,13 @@
 import { combineReducers } from 'redux'
 
 import userReducer from './user'
-import ratesreducer from './rates'
+import ratesReducer from './rates'
+import walletsReducer from './wallets'
 
 const App = combineReducers({
   user: userReducer,
-  rates: ratesreducer
+  rates: ratesReducer,
+  wallets: walletsReducer
 })
 
 export default App

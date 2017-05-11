@@ -1,5 +1,3 @@
-import { combineReducers } from 'redux'
-
 import {LOGIN as loginConstants} from '../config/constants'
 import {SIGNUP as signupConstants} from '../config/constants'
 import {USER as userConstants} from '../config/constants'
