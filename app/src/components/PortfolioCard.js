@@ -1,7 +1,8 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { Card, Segment, Header, Divider, Item, Icon, Label} from 'semantic-ui-react'
 
-const PortfolioCard = () => {
+const PortfolioCard = ({wallets}) => {
   return (
     <Card fluid className='dashboard-content-card'>
       <Card.Content className='card-header'>
@@ -12,7 +13,7 @@ const PortfolioCard = () => {
       <Card.Content className='card-content portfolio'>
         <Segment basic textAlign='center'>
           <Header as='h2'>
-            <span>₹</span> 191.82
+            <span>BTC</span> 191.82
             <Header.Subheader>Total Balance</Header.Subheader>
           </Header>
         </Segment>
