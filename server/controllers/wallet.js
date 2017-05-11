@@ -1,6 +1,7 @@
 const async = require('async')
 
 const walletUtil = require('../utils/wallet')
+const addressUtil = require('../utils/address')
 const Wallet = require('../models/Wallet')
 
 exports.createWallet = (req, res, next) => {
@@ -58,10 +59,16 @@ exports.getWallets = (req, res, next) => {
         walletUtil.getTransactions(wallet.client)
         .then(transactions => cb(null, transactions))
         .catch(err => cb(err))
+      },
+      addresses: (cb) => {
+        addressUtil.get(wallet.client)
+        .then(addresses => cb(null, addresses))
+        .catch(err => cb(err))
       }
     }, (err, results) => {
       if (err) cb(err)
       const detailedWallet = Object.assign({}, wallet.details.toWalletObject(), {
+        addresses: results.addresses,
         balance: results.balance,
         transactions: results.transactions
       })
@@ -73,7 +80,7 @@ exports.getWallets = (req, res, next) => {
       return next(err)
     }
     if (!response[0]) return next('Something is wrong with the bitcoin network')
-    return res.status(201).json(response)
+    return res.status(200).json(response)
   })
 }
 
@@ -98,10 +105,16 @@ exports.getWallet = (req, res, next) => {
       walletUtil.getTransactions(walletClient)
       .then(transactions => cb(null, transactions))
       .catch(err => cb(err))
+    },
+    addresses: (cb) => {
+      addressUtil.get(walletClient)
+      .then(addresses => cb(null, addresses))
+      .catch(err => cb(err))
     }
   }, (err, results) => {
     if (err) return next(err)
     const response = Object.assign({}, walletDetails.toWalletObject(), {
+      addresses: results.addresses,
       balance: results.balance,
       transactions: results.transactions
     })
