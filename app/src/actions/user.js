@@ -31,7 +31,7 @@ export const fetchUser = () => {
 
     return API.fetchUser()
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.statusText !== 200) {
           dispatch(fetchError(response.data))
           return Promise.reject(response)
         } else {

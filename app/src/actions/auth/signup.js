@@ -33,7 +33,7 @@ const signup = (userDetails) => {
 
     return API.signup(userDetails)
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200 || response.status !== 201) {
           dispatch(error(response.data.message))
           return Promise.reject(response)
         } else {

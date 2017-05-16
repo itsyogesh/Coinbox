@@ -77,7 +77,7 @@ export const fetchFiatRates = () => {
 
     API.fetchFiatRates()
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           dispatch(fetchAllError(response.data))
           return Promise.reject(response)
         } else {
@@ -93,7 +93,7 @@ export const fetchFiatRate = (currencyCode) => {
 
     API.fetchFiatRate(currencyCode)
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           dispatch(fetchError(response.data))
           return Promise.reject(response)
         } else {
@@ -109,7 +109,7 @@ export const fetchFiatRateFromIP = () => {
 
     API.fetchFiatRateFromIP()
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           dispatch(fetchFromIPError(response.data))
           return Promise.reject(response)
         } else {

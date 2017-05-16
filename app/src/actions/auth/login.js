@@ -33,7 +33,7 @@ const login = (credentials) => {
 
     return API.login(credentials)
       .then((response) => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           dispatch(error(response.data.message))
           return Promise.reject(response)
         } else {

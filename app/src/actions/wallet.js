@@ -54,7 +54,7 @@ export const fetchAllWallets = () => {
 
     return API.fetchWallets()
       .then(response => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           return Promise.reject(response)
         } else {
           dispatch(fetchAllSuccess(response.data))
@@ -69,7 +69,7 @@ export const fetchWallet = (walletId) => {
 
     return API.fetchWallet(walletId)
       .then(response => {
-        if(response.statusText !== 'OK') {
+        if(response.status !== 200) {
           return Promise.reject(response)
         } else {
           dispatch(fetchSuccess(response.data))
