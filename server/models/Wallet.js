@@ -5,6 +5,11 @@ const WalletSchema = new mongoose.Schema({
   userId: {type: mongoose.Schema.ObjectId, required: true, index: true},
   walletName: {type: String, required: true},
   network: {type: String, required: true},
+  meta: {
+    isDefault: {type: Boolean, default: false},
+    currency: {type: String, default: 'BTC'}
+  },
+  copayerId: {type: String},
   walletCredentials: {type: String, required: true}
 })
 

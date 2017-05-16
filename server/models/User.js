@@ -35,6 +35,11 @@ const UserSchema = new mongoose.Schema({
   meta: {
     isVerified: {type: Boolean, default: false},
     isActive: {type: Boolean, default: true}
+  },
+  country: {
+    code: {type: String},
+    name: {type: String},
+    currencyCode: {type: String}
   }
 })
 
