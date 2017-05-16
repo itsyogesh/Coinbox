@@ -57,7 +57,7 @@ export const fetchAllWallets = () => {
         if(response.statusText !== 'OK') {
           return Promise.reject(response)
         } else {
-          dispatch(fetchSuccess(response.data))
+          dispatch(fetchAllSuccess(response.data))
         }
       })
   }

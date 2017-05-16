@@ -9,6 +9,7 @@ const normalizeWallets = (wallets) => {
   wallets.forEach((wallet) => {
     walletsObj[wallet._id] = wallet
   })
+  return walletsObj
 }
 
 const addWalletToWallets = (wallets, wallet) => {
@@ -44,7 +45,7 @@ const wallets = (state = initialState, action) => {
     case constants.FETCH_SUCCESS:
       return Object.assign({}, state, {
         isLoading: action.isLoading,
-        wallets: addWalletToWallets(state.items, action.wallet)
+        items: addWalletToWallets(state.items, action.wallet)
       })
 
     case constants.FETCH_ERROR:
