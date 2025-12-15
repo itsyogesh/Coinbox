@@ -16,147 +16,353 @@ Transform Coinbox from a dated Bitcoin-only web app into a modern, local-first m
 - Anyone dreading crypto tax season
 - Privacy-conscious users who want local-first software
 
+**Key Decisions:**
+- **Open Source**: Yes - community-driven development
+- **Chains**: Bitcoin + Ethereum/EVM L2s (Arbitrum, Optimism, Base, Polygon)
+- **Tax Jurisdictions**: US, Europe (UK, Germany, France), India
+- **Bitcoin Library**: BDK (Bitcoin Dev Kit) - full wallet functionality
+- **Ethereum Library**: Viem (not Wagmi) - direct control for self-custody
+- **AI Provider**: User brings their own API key (Anthropic first, then OpenAI)
+
 ---
 
 ## Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                           COINBOX 2.0                                   │
-│                    Tauri Desktop Application                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                        FRONTEND (React 18 + TypeScript)          │   │
-│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────────────┐│   │
-│  │  │ Dashboard │ │  Wallets  │ │Transactions│ │   Tax Reports    ││   │
-│  │  └───────────┘ └───────────┘ └───────────┘ └───────────────────┘│   │
-│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────────────┐│   │
-│  │  │  Settings │ │ AI Chat   │ │  Watch    │ │   DeFi Positions ││   │
-│  │  │           │ │ (optional)│ │  List     │ │                   ││   │
-│  │  └───────────┘ └───────────┘ └───────────┘ └───────────────────┘│   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                    │                                    │
-│                                    ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                     TAURI BRIDGE (IPC)                           │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                    │                                    │
-│                                    ▼                                    │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                      RUST BACKEND CORE                           │   │
-│  │                                                                   │   │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │   │
-│  │  │Wallet Core  │  │ Chain       │  │    AI Service           │  │   │
-│  │  │             │  │ Adapters    │  │    (Optional)           │  │   │
-│  │  │• Key Gen    │  │             │  │                         │  │   │
-│  │  │• Signing    │  │• Bitcoin    │  │• API Key Storage        │  │   │
-│  │  │• Addresses  │  │• Ethereum   │  │• Provider Abstraction   │  │   │
-│  │  │• HD Wallets │  │• Solana     │  │• Transaction Categorize │  │   │
-│  │  │• Import     │  │• Polygon    │  │• Natural Language Query │  │   │
-│  │  │• Watch-Only │  │• Arbitrum   │  │• Tax Suggestions        │  │   │
-│  │  └─────────────┘  │• Base       │  └─────────────────────────┘  │   │
-│  │                   │• (Plugin)   │                                │   │
-│  │  ┌─────────────┐  └─────────────┘  ┌─────────────────────────┐  │   │
-│  │  │Tax Engine   │                   │   Price Service         │  │   │
-│  │  │             │  ┌─────────────┐  │                         │  │   │
-│  │  │• Cost Basis │  │ Database    │  │• CoinGecko API          │  │   │
-│  │  │• Categories │  │ (SQLite)    │  │• Historical prices      │  │   │
-│  │  │• FIFO/LIFO  │  │             │  │• Multi-currency         │  │   │
-│  │  │• Reports    │  │• Encrypted  │  │• Caching                │  │   │
-│  │  │• Export     │  │• Local-only │  └─────────────────────────┘  │   │
-│  │  └─────────────┘  └─────────────┘                                │   │
-│  │                                                                   │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              COINBOX 2.0                                    │
+│                       Tauri Desktop Application                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                    FRONTEND (React 18 + TypeScript + Vite)            │ │
+│  │                                                                        │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌─────────────┐ ┌───────────────────────┐  │ │
+│  │  │Dashboard │ │ Wallets  │ │Transactions │ │    Tax Reports        │  │ │
+│  │  └──────────┘ └──────────┘ └─────────────┘ └───────────────────────┘  │ │
+│  │  ┌──────────┐ ┌──────────┐ ┌─────────────┐ ┌───────────────────────┐  │ │
+│  │  │ Settings │ │ AI Chat  │ │ Watch List  │ │   DeFi Positions      │  │ │
+│  │  └──────────┘ └──────────┘ └─────────────┘ └───────────────────────┘  │ │
+│  │                                                                        │ │
+│  │  Libraries: Viem, Zustand, TanStack Query, Framer Motion, Recharts    │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│                                     ▼                                       │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                        TAURI BRIDGE (IPC)                              │ │
+│  │              Secure communication between Frontend & Rust              │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                     │                                       │
+│                                     ▼                                       │
+│  ┌───────────────────────────────────────────────────────────────────────┐ │
+│  │                         RUST BACKEND CORE                              │ │
+│  │                                                                         │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────────────┐  │ │
+│  │  │  Wallet Core    │  │ Chain Adapters  │  │    AI Service          │  │ │
+│  │  │                 │  │                 │  │    (Optional)          │  │ │
+│  │  │ • HD Derivation │  │ • Bitcoin (BDK) │  │                        │  │ │
+│  │  │ • Key Storage   │  │ • Ethereum      │  │ • API Key Management   │  │ │
+│  │  │ • Signing       │  │ • Arbitrum      │  │ • Provider Abstraction │  │ │
+│  │  │ • Watch-Only    │  │ • Optimism      │  │ • Tx Categorization    │  │ │
+│  │  │ • Import/Export │  │ • Base          │  │ • NL Queries           │  │ │
+│  │  └─────────────────┘  │ • Polygon       │  └────────────────────────┘  │ │
+│  │                       └─────────────────┘                               │ │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────────────┐  │ │
+│  │  │  Tax Engine     │  │  Database       │  │   Price Service        │  │ │
+│  │  │                 │  │  (SQLite)       │  │                        │  │ │
+│  │  │ • Cost Basis    │  │                 │  │ • CoinGecko API        │  │ │
+│  │  │ • Categories    │  │ • SQLCipher     │  │ • Historical Prices    │  │ │
+│  │  │ • FIFO/LIFO/HIFO│  │ • Encrypted     │  │ • Multi-Currency       │  │ │
+│  │  │ • Multi-Juris.  │  │ • Local-Only    │  │ • Aggressive Caching   │  │ │
+│  │  │ • Report Export │  │                 │  │                        │  │ │
+│  │  └─────────────────┘  └─────────────────┘  └────────────────────────┘  │ │
+│  │                                                                         │ │
+│  └───────────────────────────────────────────────────────────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 1: Foundation (Core Desktop App)
+## Key Technical Decisions
 
-### 1.1 Project Setup & Infrastructure
+### Bitcoin: BDK (Bitcoin Dev Kit)
 
-**Goal:** Set up modern Tauri + React project structure, removing old backend.
+**Why BDK over alternatives:**
 
-**Tasks:**
-- [ ] Initialize new Tauri 2.0 project with React 18 + TypeScript + Vite
-- [ ] Set up project structure:
-  ```
-  coinbox/
-  ├── src-tauri/           # Rust backend
-  │   ├── src/
-  │   │   ├── main.rs
-  │   │   ├── lib.rs
-  │   │   ├── wallet/      # Wallet core module
-  │   │   ├── chains/      # Chain adapters
-  │   │   ├── database/    # SQLite + encryption
-  │   │   ├── tax/         # Tax engine
-  │   │   ├── ai/          # AI service abstraction
-  │   │   └── commands/    # Tauri IPC commands
-  │   └── Cargo.toml
-  ├── src/                 # React frontend
-  │   ├── components/
-  │   ├── pages/
-  │   ├── hooks/
-  │   ├── stores/          # Zustand state
-  │   ├── lib/
-  │   └── types/
-  ├── package.json
-  └── tauri.conf.json
-  ```
-- [ ] Configure Tailwind CSS + shadcn/ui components
-- [ ] Set up SQLite with SQLCipher encryption for local database
-- [ ] Implement secure key storage using OS keychain (keyring crate)
-- [ ] Create basic app shell with navigation
+| Feature | BDK | rust-bitcoin | electrum-client |
+|---------|-----|--------------|-----------------|
+| Wallet Logic | Full | None | None |
+| UTXO Management | Built-in | Manual | Manual |
+| Watch-Only Support | Native | Build yourself | Build yourself |
+| Blockchain Sync | Multiple backends | Build yourself | Direct protocol |
+| Persistence | SQLite built-in | Build yourself | None |
 
-**Dependencies (Rust):**
+**BDK Features:**
+- Descriptor-based wallet architecture (BIP84 Native SegWit)
+- Multiple backends: Electrum, Esplora, Bitcoin Core RPC
+- Built-in SQLite persistence
+- Full watch-only wallet support via xpub descriptors
+- Transaction history with timestamps
+- UTXO management and coin selection
+
+**Dependencies:**
+```toml
+bdk_wallet = { version = "2.2.0", features = ["rusqlite"] }
+bdk_electrum = "0.19.0"
+bdk_esplora = "0.19.0"
+```
+
+### Ethereum: Viem (Not Wagmi)
+
+**Why Viem over Wagmi:**
+
+| Aspect | Viem | Wagmi |
+|--------|------|-------|
+| Bundle size | ~27 KB | ~130 KB+ |
+| Control | Direct | Connector abstraction |
+| Desktop wallet fit | Excellent | Designed for external wallets |
+| Custom signing | Easy via custom account | Requires connector hacking |
+
+**Our Pattern:**
+- Viem `createPublicClient` for read operations (balances, transactions)
+- Custom `TauriAccount` that routes signing to Rust backend
+- All private keys stay in Rust - never exposed to JavaScript
+
+```typescript
+// Frontend: Custom Tauri-backed account
+export function createTauriAccount(address: Hex, accountId: string): Account {
+  return {
+    address,
+    async signMessage({ message }) {
+      return await invoke<Hex>('sign_message', { accountId, message });
+    },
+    async signTransaction(transaction) {
+      return await invoke<Hex>('sign_transaction', { accountId, transaction });
+    },
+  };
+}
+```
+
+### Chain Provider Settings
+
+Users can configure RPC endpoints per chain in Advanced Settings:
+
+```typescript
+interface ChainConfig {
+  chainId: number;
+  name: string;
+  rpcUrl: string;           // User-configurable
+  explorerUrl: string;
+  isCustom: boolean;
+}
+
+// Default public endpoints with fallbacks
+const defaults = {
+  1: 'https://eth.llamarpc.com',
+  42161: 'https://arb1.arbitrum.io/rpc',
+  10: 'https://mainnet.optimism.io',
+  8453: 'https://mainnet.base.org',
+  137: 'https://polygon-rpc.com',
+};
+```
+
+**Features:**
+- Test RPC connection before saving
+- Fallback to default if custom fails
+- Support for Alchemy/Infura API keys
+- Per-chain block explorer configuration
+
+---
+
+## Unified Data Model
+
+The unified data model provides chain-agnostic transaction representation. Full types in `/unified-data-model/`.
+
+### Core Principle: Transfers as Atomic Units
+
+```typescript
+// Every transaction has one or more transfers
+interface UnifiedTransaction {
+  id: string;
+  chain: Chain;
+  hash: string;
+  timestamp: number;
+  status: TransactionStatus;
+  direction: TransactionDirection;
+  fee: Fee;
+  transfers: Transfer[];           // ← All value movements
+  chainSpecific: ChainSpecificData; // ← Chain quirks
+  taxCategory?: TaxCategory;
+  costBasis?: CostBasisInfo[];
+}
+
+interface Transfer {
+  from: string;
+  to: string;
+  amount: Amount;
+  transferType: 'native' | 'token' | 'nft' | 'internal';
+}
+```
+
+### Chain-Specific Handling
+
+| Chain | Model | Transfer Detection |
+|-------|-------|-------------------|
+| Bitcoin | UTXO | Each output = 1 transfer |
+| Ethereum | Account | Native ETH + each ERC-20 log = transfers |
+| Solana | Account | Token balance deltas = transfers |
+
+### Example Transformations
+
+**Bitcoin (3 outputs):**
+```typescript
+transfers: [
+  { to: "bob", amount: "0.1 BTC" },
+  { to: "carol", amount: "0.2 BTC" },
+  { to: "alice_change", amount: "0.65 BTC" },  // Change
+]
+```
+
+**Ethereum Uniswap Swap:**
+```typescript
+transfers: [
+  { from: "alice", to: "pool", asset: "USDC", amount: "1000" },
+  { from: "pool", to: "alice", asset: "WETH", amount: "0.4" },
+]
+direction: "swap"
+taxCategory: "swap"
+```
+
+---
+
+## Phase 1: Foundation
+
+### 1.1 Project Setup
+
+```
+coinbox/
+├── src-tauri/
+│   ├── src/
+│   │   ├── main.rs
+│   │   ├── lib.rs
+│   │   ├── wallet/          # BDK integration
+│   │   ├── chains/
+│   │   │   ├── mod.rs
+│   │   │   ├── adapter.rs   # ChainAdapter trait
+│   │   │   ├── bitcoin.rs   # BDK adapter
+│   │   │   └── ethereum.rs  # Viem backend support
+│   │   ├── database/
+│   │   ├── tax/
+│   │   ├── ai/
+│   │   ├── settings/        # Chain provider configs
+│   │   └── commands/
+│   └── Cargo.toml
+├── src/
+│   ├── components/
+│   │   ├── ui/              # shadcn/ui components
+│   │   ├── wallet/          # Wallet-specific components
+│   │   ├── transactions/
+│   │   └── charts/
+│   ├── pages/
+│   ├── hooks/
+│   ├── stores/              # Zustand
+│   ├── lib/
+│   │   ├── viem/            # Viem setup
+│   │   ├── tauri/           # Tauri IPC wrappers
+│   │   └── animations.ts    # Framer Motion utilities
+│   └── types/
+├── package.json
+└── tauri.conf.json
+```
+
+### 1.2 Dependencies
+
+**Rust (Cargo.toml):**
 ```toml
 [dependencies]
+# Tauri
 tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-store = "2"
+
+# Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# Database
 sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite"] }
+
+# Async
 tokio = { version = "1", features = ["full"] }
-keyring = "2"                    # OS keychain
-argon2 = "0.5"                   # Password hashing
-aes-gcm = "0.10"                 # Encryption
-bip39 = "2"                      # Mnemonic generation
-bitcoin = "0.31"                 # Bitcoin support
-ethers = "2"                     # Ethereum support
-solana-sdk = "1.17"              # Solana support
+
+# Security
+keyring = "2"
+argon2 = "0.5"
+aes-gcm = "0.10"
+zeroize = "1"
+
+# Bitcoin (BDK)
+bdk_wallet = { version = "2.2.0", features = ["rusqlite"] }
+bdk_electrum = "0.19.0"
+bdk_esplora = "0.19.0"
+
+# Ethereum signing
+ethers-core = "2"
+secp256k1 = "0.28"
+
+# Crypto primitives
+bip39 = "2"
+tiny-bip39 = "1"
+hdpath = "0.6"
+
+# Utilities
 reqwest = { version = "0.11", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 thiserror = "1"
 tracing = "0.1"
+anyhow = "1"
 ```
 
-**Dependencies (Frontend):**
+**Frontend (package.json):**
 ```json
 {
   "dependencies": {
     "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6",
     "@tauri-apps/api": "^2",
+    "viem": "^2",
     "@tanstack/react-query": "^5",
     "zustand": "^4",
-    "react-router-dom": "^6",
+    "framer-motion": "^11",
     "recharts": "^2",
     "date-fns": "^3",
     "lucide-react": "^0.300",
+    "clsx": "^2",
+    "tailwind-merge": "^2",
     "class-variance-authority": "^0.7",
-    "tailwind-merge": "^2"
+    "@radix-ui/react-dialog": "^1",
+    "@radix-ui/react-dropdown-menu": "^2",
+    "@radix-ui/react-tabs": "^1",
+    "@radix-ui/react-toast": "^1"
+  },
+  "devDependencies": {
+    "@types/react": "^18",
+    "typescript": "^5",
+    "vite": "^5",
+    "@vitejs/plugin-react": "^4",
+    "tailwindcss": "^3.4",
+    "autoprefixer": "^10",
+    "postcss": "^8"
   }
 }
 ```
 
-### 1.2 Database Schema Design
-
-**Goal:** Design comprehensive local database for all app data.
+### 1.3 Database Schema
 
 ```sql
--- Core tables
+-- Wallets
 CREATE TABLE wallets (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -165,12 +371,13 @@ CREATE TABLE wallets (
     updated_at INTEGER NOT NULL
 );
 
+-- Accounts (addresses per chain)
 CREATE TABLE accounts (
     id TEXT PRIMARY KEY,
     wallet_id TEXT NOT NULL REFERENCES wallets(id),
-    chain TEXT NOT NULL,        -- 'bitcoin', 'ethereum', 'solana', etc.
+    chain TEXT NOT NULL,
     address TEXT NOT NULL,
-    derivation_path TEXT,       -- NULL for watch-only
+    derivation_path TEXT,
     account_index INTEGER,
     label TEXT,
     is_watch_only BOOLEAN DEFAULT FALSE,
@@ -178,466 +385,330 @@ CREATE TABLE accounts (
     UNIQUE(chain, address)
 );
 
--- Encrypted separately, referenced by wallet_id
+-- Encrypted wallet secrets (separate table for security)
 CREATE TABLE wallet_secrets (
     wallet_id TEXT PRIMARY KEY REFERENCES wallets(id),
-    encrypted_seed BLOB,        -- AES-GCM encrypted mnemonic/private key
+    encrypted_seed BLOB,
     encryption_nonce BLOB
 );
 
+-- Unified transactions (stores full JSON)
 CREATE TABLE transactions (
     id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id),
     chain TEXT NOT NULL,
-    tx_hash TEXT NOT NULL,
+    hash TEXT NOT NULL,
     block_number INTEGER,
-    timestamp INTEGER NOT NULL,
-    from_address TEXT,
-    to_address TEXT,
-    value TEXT NOT NULL,        -- String to handle big numbers
-    fee TEXT,
-    fee_currency TEXT,
-    status TEXT NOT NULL,       -- 'pending', 'confirmed', 'failed'
-    raw_data TEXT,              -- JSON blob of chain-specific data
+    timestamp INTEGER,
+    direction TEXT NOT NULL,
+    status TEXT NOT NULL,
+    data JSON NOT NULL,  -- Full UnifiedTransaction
     created_at INTEGER NOT NULL,
-    UNIQUE(chain, tx_hash)
+    updated_at INTEGER NOT NULL,
+    UNIQUE(chain, hash)
 );
 
-CREATE TABLE transaction_categories (
-    id TEXT PRIMARY KEY,
-    transaction_id TEXT NOT NULL REFERENCES transactions(id),
-    category TEXT NOT NULL,     -- 'transfer', 'swap', 'stake', 'unstake',
-                                -- 'airdrop', 'nft_purchase', 'nft_sale',
-                                -- 'defi_deposit', 'defi_withdrawal', 'fee',
-                                -- 'income', 'gift', 'payment', 'unknown'
-    sub_category TEXT,
-    confidence REAL,            -- AI confidence score (0-1)
-    source TEXT NOT NULL,       -- 'manual', 'rule', 'ai'
-    notes TEXT,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
+-- Tax lots for cost basis
 CREATE TABLE tax_lots (
     id TEXT PRIMARY KEY,
     account_id TEXT NOT NULL REFERENCES accounts(id),
-    asset TEXT NOT NULL,        -- 'BTC', 'ETH', etc.
+    asset TEXT NOT NULL,
     amount TEXT NOT NULL,
     cost_basis_usd TEXT NOT NULL,
     acquired_at INTEGER NOT NULL,
-    acquisition_tx_id TEXT REFERENCES transactions(id),
+    acquisition_tx_id TEXT,
     disposed_at INTEGER,
-    disposal_tx_id TEXT REFERENCES transactions(id),
+    disposal_tx_id TEXT,
     disposal_proceeds_usd TEXT,
     gain_loss_usd TEXT,
-    holding_period TEXT,        -- 'short', 'long'
-    cost_basis_method TEXT,     -- 'fifo', 'lifo', 'hifo', 'specific'
+    holding_period TEXT,
+    method TEXT NOT NULL,
     created_at INTEGER NOT NULL
 );
 
-CREATE TABLE balances (
-    id TEXT PRIMARY KEY,
-    account_id TEXT NOT NULL REFERENCES accounts(id),
-    asset TEXT NOT NULL,
-    balance TEXT NOT NULL,
-    last_updated INTEGER NOT NULL,
-    UNIQUE(account_id, asset)
-);
-
-CREATE TABLE price_cache (
-    id TEXT PRIMARY KEY,
-    asset TEXT NOT NULL,
-    currency TEXT NOT NULL,     -- 'USD', 'EUR', etc.
-    price TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    source TEXT NOT NULL,
-    UNIQUE(asset, currency, timestamp)
-);
-
+-- User settings
 CREATE TABLE settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at INTEGER NOT NULL
 );
 
--- Settings include:
--- 'default_currency': 'USD'
--- 'cost_basis_method': 'fifo'
--- 'ai_provider': 'anthropic' | 'openai' | 'none'
--- 'ai_api_key_encrypted': <encrypted key>
--- 'theme': 'light' | 'dark' | 'system'
+-- Chain RPC configurations
+CREATE TABLE chain_configs (
+    chain_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    rpc_url TEXT NOT NULL,
+    explorer_url TEXT NOT NULL,
+    is_custom BOOLEAN DEFAULT FALSE,
+    updated_at INTEGER NOT NULL
+);
 
-CREATE TABLE ai_chat_history (
+-- Price cache
+CREATE TABLE price_cache (
     id TEXT PRIMARY KEY,
-    role TEXT NOT NULL,         -- 'user', 'assistant'
-    content TEXT NOT NULL,
-    created_at INTEGER NOT NULL
+    asset TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    price TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    source TEXT NOT NULL
 );
 
 -- Indexes
-CREATE INDEX idx_accounts_wallet ON accounts(wallet_id);
-CREATE INDEX idx_transactions_account ON transactions(account_id);
+CREATE INDEX idx_transactions_chain ON transactions(chain);
 CREATE INDEX idx_transactions_timestamp ON transactions(timestamp);
-CREATE INDEX idx_tax_lots_account ON tax_lots(account_id);
 CREATE INDEX idx_tax_lots_asset ON tax_lots(asset);
-CREATE INDEX idx_balances_account ON balances(account_id);
-```
-
-### 1.3 Wallet Core Module
-
-**Goal:** Implement secure wallet generation, import, and management.
-
-**Features:**
-- [ ] HD wallet generation (BIP39/BIP44)
-- [ ] Mnemonic phrase generation and validation (12/24 words)
-- [ ] Multi-chain derivation paths:
-  - Bitcoin: m/84'/0'/0' (Native SegWit)
-  - Ethereum/EVM: m/44'/60'/0'/0
-  - Solana: m/44'/501'/0'/0'
-- [ ] Private key import (single key)
-- [ ] Watch-only address import (no keys)
-- [ ] Secure storage with OS keychain + AES-GCM encryption
-- [ ] Password protection with Argon2 key derivation
-- [ ] Wallet backup/export (encrypted JSON)
-
-**API (Tauri Commands):**
-```rust
-#[tauri::command]
-async fn create_wallet(name: String, password: String) -> Result<WalletInfo, Error>;
-
-#[tauri::command]
-async fn import_wallet_mnemonic(name: String, mnemonic: String, password: String) -> Result<WalletInfo, Error>;
-
-#[tauri::command]
-async fn import_private_key(name: String, chain: Chain, private_key: String, password: String) -> Result<WalletInfo, Error>;
-
-#[tauri::command]
-async fn add_watch_address(name: String, chain: Chain, address: String) -> Result<AccountInfo, Error>;
-
-#[tauri::command]
-async fn get_wallets() -> Result<Vec<WalletInfo>, Error>;
-
-#[tauri::command]
-async fn delete_wallet(wallet_id: String, password: String) -> Result<(), Error>;
-
-#[tauri::command]
-async fn export_wallet(wallet_id: String, password: String) -> Result<EncryptedBackup, Error>;
-
-#[tauri::command]
-async fn unlock_wallet(wallet_id: String, password: String) -> Result<UnlockToken, Error>;
+CREATE INDEX idx_tax_lots_account ON tax_lots(account_id);
 ```
 
 ---
 
 ## Phase 2: Chain Integration
 
-### 2.1 Chain Adapter Architecture
-
-**Goal:** Create pluggable chain adapter system for easy multi-chain support.
+### 2.1 Chain Adapter Trait
 
 ```rust
-// src-tauri/src/chains/mod.rs
-
 #[async_trait]
 pub trait ChainAdapter: Send + Sync {
     fn chain(&self) -> Chain;
 
-    async fn get_balance(&self, address: &str) -> Result<Balance, ChainError>;
+    async fn get_balance(&self, address: &str) -> Result<Vec<Balance>>;
 
     async fn get_transactions(
         &self,
         address: &str,
         from_block: Option<u64>,
-        limit: Option<u32>
-    ) -> Result<Vec<ChainTransaction>, ChainError>;
+    ) -> Result<Vec<UnifiedTransaction>>;
 
-    async fn get_transaction(&self, tx_hash: &str) -> Result<ChainTransaction, ChainError>;
+    async fn estimate_fee(&self, tx: &UnsignedTx) -> Result<Fee>;
 
-    async fn estimate_fee(&self, tx: &UnsignedTransaction) -> Result<Fee, ChainError>;
-
-    async fn broadcast_transaction(&self, signed_tx: &[u8]) -> Result<String, ChainError>;
-
-    fn derive_address(&self, public_key: &[u8]) -> Result<String, ChainError>;
+    async fn broadcast(&self, signed_tx: &[u8]) -> Result<String>;
 
     fn validate_address(&self, address: &str) -> bool;
-
-    async fn get_token_balances(&self, address: &str) -> Result<Vec<TokenBalance>, ChainError>;
 }
 ```
 
-### 2.2 Bitcoin Adapter
+### 2.2 Bitcoin Adapter (BDK)
 
-**Goal:** Implement Bitcoin support using Electrum protocol.
-
-**Features:**
-- [ ] Connect to public Electrum servers (with fallbacks)
-- [ ] Native SegWit (bech32) addresses
-- [ ] Balance fetching (confirmed + unconfirmed)
-- [ ] Transaction history with full details
-- [ ] UTXO management
-- [ ] Fee estimation (sat/vB)
-- [ ] Transaction creation and signing
-- [ ] Transaction broadcasting
-
-**RPC Endpoints:**
-- Blockstream Electrum: electrum.blockstream.info:50002
-- Mempool.space API (fallback): mempool.space/api
-
-### 2.3 Ethereum Adapter
-
-**Goal:** Implement Ethereum + EVM L2 support.
-
-**Features:**
-- [ ] Connect to public RPC endpoints (with fallbacks)
-- [ ] ETH balance fetching
-- [ ] ERC-20 token detection and balances
-- [ ] Transaction history via Etherscan-like APIs
-- [ ] EIP-1559 fee estimation
-- [ ] Transaction creation and signing
-- [ ] NFT detection (ERC-721, ERC-1155)
-- [ ] Support for L2s (same adapter, different RPC):
-  - Arbitrum One
-  - Optimism
-  - Base
-  - Polygon
-
-**RPC Endpoints:**
-- Ethereum: Infura, Alchemy, or public endpoints
-- Arbitrum: arb1.arbitrum.io/rpc
-- Optimism: mainnet.optimism.io
-- Base: mainnet.base.org
-- Polygon: polygon-rpc.com
-
-### 2.4 Solana Adapter
-
-**Goal:** Implement Solana support.
-
-**Features:**
-- [ ] Connect to Solana RPC endpoints
-- [ ] SOL balance fetching
-- [ ] SPL token detection and balances
-- [ ] Transaction history
-- [ ] Fee estimation
-- [ ] Transaction creation and signing
-- [ ] NFT detection (Metaplex)
-
-**RPC Endpoints:**
-- Helius, QuickNode, or public endpoints
-
-### 2.5 Price Service
-
-**Goal:** Fetch and cache cryptocurrency prices.
-
-**Features:**
-- [ ] Current prices from CoinGecko API (free tier)
-- [ ] Historical prices for cost basis calculation
-- [ ] Multi-currency support (USD, EUR, GBP, etc.)
-- [ ] Intelligent caching (current: 60s, historical: permanent)
-- [ ] Rate limiting compliance
-- [ ] Fallback to CoinMarketCap if needed
-
-**API (Tauri Commands):**
 ```rust
-#[tauri::command]
-async fn get_current_price(asset: String, currency: String) -> Result<Price, Error>;
+pub struct BitcoinAdapter {
+    network: Network,
+    electrum_url: String,
+}
 
-#[tauri::command]
-async fn get_historical_price(asset: String, currency: String, timestamp: i64) -> Result<Price, Error>;
+impl BitcoinAdapter {
+    pub async fn create_watch_wallet(
+        &self,
+        xpub: &str,
+        db_path: &str,
+    ) -> Result<Wallet> {
+        let descriptor = format!("wpkh({}/0/*)", xpub);
+        let change_descriptor = format!("wpkh({}/1/*)", xpub);
 
+        let mut conn = rusqlite::Connection::open(db_path)?;
+
+        let wallet = Wallet::create(&descriptor, &change_descriptor)
+            .network(self.network)
+            .create_wallet(&mut conn)?;
+
+        Ok(wallet)
+    }
+
+    pub async fn sync_wallet(&self, wallet: &mut Wallet) -> Result<()> {
+        let client = BdkElectrumClient::new(
+            electrum_client::Client::new(&self.electrum_url)?
+        );
+
+        let request = wallet.start_sync_with_revealed_spks();
+        let update = client.sync(request, 1, false)?;
+        wallet.apply_update(update)?;
+
+        Ok(())
+    }
+
+    pub async fn get_transactions(&self, wallet: &Wallet) -> Vec<UnifiedTransaction> {
+        wallet.transactions()
+            .map(|tx| self.transform_to_unified(tx))
+            .collect()
+    }
+}
+```
+
+### 2.3 Ethereum Adapter (Viem Backend)
+
+The Ethereum adapter handles EVM chains. Frontend uses Viem for RPC calls, backend handles signing.
+
+```rust
+// Backend: Signing only
 #[tauri::command]
-async fn get_portfolio_value(currency: String) -> Result<PortfolioValue, Error>;
+pub async fn sign_eth_transaction(
+    account_id: String,
+    transaction: serde_json::Value,
+    wallet_manager: State<'_, WalletManager>,
+) -> Result<String, String> {
+    let private_key = wallet_manager
+        .get_private_key(&account_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Sign using secp256k1
+    let signature = sign_transaction(&private_key, &transaction)?;
+
+    Ok(hex::encode(signature))
+}
+```
+
+```typescript
+// Frontend: Viem public client for reads
+const publicClient = createPublicClient({
+  chain: mainnet,
+  transport: http(userRpcUrl),
+});
+
+// Balance
+const balance = await publicClient.getBalance({ address });
+
+// ERC-20 tokens via multicall
+const tokenBalances = await publicClient.multicall({
+  contracts: tokenAddresses.map(addr => ({
+    address: addr,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [userAddress],
+  })),
+});
 ```
 
 ---
 
-## Phase 3: Core Features
+## Phase 3: Tax Engine
 
-### 3.1 Dashboard
+### 3.1 Supported Jurisdictions
 
-**Goal:** Create comprehensive portfolio overview.
+| Jurisdiction | Cost Basis Methods | Special Rules |
+|--------------|-------------------|---------------|
+| **US** | FIFO, LIFO, HIFO, Specific ID | Per-wallet tracking (2025 IRS), Form 8949 |
+| **UK** | Section 104 pool, Same-day, 30-day | Bed and breakfasting rules |
+| **Germany** | FIFO only | 1-year holding = tax free |
+| **France** | Average cost | Flat 30% tax (PFU) |
+| **India** | FIFO | 30% flat rate, 1% TDS |
 
-**Components:**
-- [ ] Total portfolio value (with 24h change)
-- [ ] Asset allocation pie/donut chart
-- [ ] Portfolio performance line chart (7d, 30d, 90d, 1y, all)
-- [ ] Top holdings list with values and changes
-- [ ] Recent transactions feed
-- [ ] Quick actions (Send, Receive, Add Wallet)
+### 3.2 Tax Categories
 
-### 3.2 Wallets & Accounts View
+```typescript
+enum TaxCategory {
+  // Capital Gains (disposal)
+  Sale = 'sale',
+  Swap = 'swap',
+  NFTSale = 'nft_sale',
+  PaymentSent = 'payment_sent',
 
-**Goal:** Manage wallets and view account details.
+  // Income (acquisition at FMV)
+  Airdrop = 'airdrop',
+  StakingReward = 'staking_reward',
+  MiningReward = 'mining_reward',
+  DeFiYield = 'defi_yield',
 
-**Components:**
-- [ ] Wallet list with total values
-- [ ] Account cards showing:
-  - Address (truncated with copy)
-  - Chain icon
-  - Balance in native + fiat
-  - Token list
-  - Watch-only badge if applicable
-- [ ] Add wallet modal (create/import/watch)
-- [ ] Wallet settings (rename, delete, backup)
-- [ ] Address QR code display for receiving
+  // Non-Taxable
+  Transfer = 'transfer',      // Between own wallets
+  Purchase = 'purchase',      // Buying crypto
+  GiftReceived = 'gift_received',
 
-### 3.3 Transactions View
-
-**Goal:** Display and manage transaction history.
-
-**Components:**
-- [ ] Transaction list with filters:
-  - By wallet/account
-  - By chain
-  - By category
-  - By date range
-  - By status
-- [ ] Transaction details modal:
-  - Full tx hash with explorer link
-  - From/To addresses
-  - Value + fee
-  - Timestamp
-  - Category (editable)
-  - Notes (editable)
-  - Cost basis info
-- [ ] Bulk categorization
-- [ ] Export to CSV
-
-### 3.4 Watch List
-
-**Goal:** Track addresses without owning keys.
-
-**Components:**
-- [ ] Add watch address (any chain)
-- [ ] Label/nickname addresses
-- [ ] Group addresses by tag
-- [ ] View balances and transactions
-- [ ] "Whale watching" - track notable addresses
-- [ ] Price alerts (future)
-
----
-
-## Phase 4: Tax Engine
-
-### 4.1 Cost Basis Tracking
-
-**Goal:** Implement IRS-compliant cost basis calculation.
-
-**Features:**
-- [ ] Automatic cost basis assignment on acquisition
-- [ ] Support multiple accounting methods:
-  - FIFO (First In, First Out) - default
-  - LIFO (Last In, First Out)
-  - HIFO (Highest In, First Out)
-  - Specific Identification
-- [ ] Per-wallet cost basis tracking (2025 IRS requirement)
-- [ ] Transfer detection (not taxable events)
-- [ ] Handle chain-specific events:
-  - Airdrops (income at FMV)
-  - Staking rewards (income at FMV)
-  - Hard forks (income at FMV)
-  - NFT sales (capital gains)
-  - DeFi yields (income)
-
-### 4.2 Transaction Categorization
-
-**Goal:** Automatically categorize transactions for tax purposes.
-
-**Categories:**
-```
-TAXABLE EVENTS:
-- sale              → Capital gain/loss
-- swap              → Capital gain/loss (disposal + acquisition)
-- nft_sale          → Capital gain/loss
-- payment_sent      → Capital gain/loss if appreciated
-
-INCOME EVENTS:
-- airdrop           → Ordinary income at FMV
-- staking_reward    → Ordinary income at FMV
-- mining_reward     → Ordinary income at FMV
-- defi_yield        → Ordinary income at FMV
-- gift_received     → No tax (but track basis)
-
-NON-TAXABLE:
-- transfer          → Between own wallets
-- gift_sent         → May have gift tax implications
-- purchase          → Acquisition (sets cost basis)
-
-NEEDS REVIEW:
-- unknown           → Requires manual categorization
+  // Special
+  Bridge = 'bridge',
+  Unknown = 'unknown',
+}
 ```
 
-**Rule Engine:**
-- [ ] Pattern matching for common transaction types
-- [ ] Smart contract interaction detection
-- [ ] DEX swap detection (Uniswap, etc.)
-- [ ] Bridge transaction detection
-- [ ] Staking contract detection
+### 3.3 Cost Basis Calculation
 
-### 4.3 Tax Reports
-
-**Goal:** Generate tax-ready reports.
-
-**Report Types:**
-- [ ] Capital Gains Summary
-  - Short-term gains/losses
-  - Long-term gains/losses
-  - Total realized gains/losses
-- [ ] Income Summary
-  - Staking rewards
-  - Airdrops
-  - DeFi yields
-  - Other income
-- [ ] Transaction History (IRS Form 8949 format)
-- [ ] Cost Basis Report (per asset)
-- [ ] Unrealized Gains Report
-
-**Export Formats:**
-- [ ] CSV (for accountants)
-- [ ] PDF summary report
-- [ ] TurboTax compatible format
-- [ ] TaxAct compatible format
-
-**API (Tauri Commands):**
 ```rust
-#[tauri::command]
-async fn generate_tax_report(
-    year: i32,
-    report_type: TaxReportType,
-    cost_basis_method: CostBasisMethod
-) -> Result<TaxReport, Error>;
+pub struct TaxEngine {
+    method: CostBasisMethod,
+    jurisdiction: Jurisdiction,
+}
 
-#[tauri::command]
-async fn export_tax_report(
-    report: TaxReport,
-    format: ExportFormat
-) -> Result<Vec<u8>, Error>;
+impl TaxEngine {
+    pub fn calculate_gain_loss(
+        &self,
+        disposal: &Disposal,
+        lots: &[TaxLot],
+    ) -> Result<GainLoss> {
+        let matched_lots = match self.method {
+            CostBasisMethod::Fifo => self.match_fifo(disposal, lots),
+            CostBasisMethod::Lifo => self.match_lifo(disposal, lots),
+            CostBasisMethod::Hifo => self.match_hifo(disposal, lots),
+            CostBasisMethod::SpecificId => self.match_specific(disposal, lots),
+        };
 
-#[tauri::command]
-async fn get_tax_summary(year: i32) -> Result<TaxSummary, Error>;
+        let total_cost_basis = matched_lots.iter()
+            .map(|l| l.cost_basis)
+            .sum();
+
+        let gain_loss = disposal.proceeds - total_cost_basis;
+
+        let holding_period = self.determine_holding_period(
+            &matched_lots,
+            disposal.timestamp,
+        );
+
+        Ok(GainLoss {
+            amount: gain_loss,
+            holding_period,
+            lots: matched_lots,
+        })
+    }
+}
+```
+
+### 3.4 Report Generation
+
+```typescript
+interface TaxReport {
+  year: number;
+  jurisdiction: Jurisdiction;
+  currency: string;
+
+  capitalGains: {
+    shortTerm: CapitalGainsEntry[];
+    longTerm: CapitalGainsEntry[];
+    totalShortTermGain: string;
+    totalLongTermGain: string;
+  };
+
+  income: IncomeEntry[];
+  totalIncome: string;
+}
+
+// Export formats
+type ExportFormat =
+  | 'csv'
+  | 'pdf'
+  | 'form_8949'     // US
+  | 'turbotax'      // US
+  | 'hmrc_csv'      // UK
+  | 'wiso'          // Germany
+  | 'koinly';       // Universal
 ```
 
 ---
 
-## Phase 5: AI Integration
+## Phase 4: AI Integration
 
-### 5.1 AI Provider Abstraction
-
-**Goal:** Create pluggable AI provider system.
+### 4.1 Provider Abstraction
 
 ```rust
-// src-tauri/src/ai/mod.rs
-
 #[async_trait]
 pub trait AIProvider: Send + Sync {
-    async fn complete(&self, prompt: &str, context: &str) -> Result<String, AIError>;
-
     async fn categorize_transaction(
         &self,
-        tx: &Transaction,
-        context: &TransactionContext
-    ) -> Result<CategorySuggestion, AIError>;
+        tx: &UnifiedTransaction,
+        context: &TxContext,
+    ) -> Result<CategorySuggestion>;
 
-    async fn chat(&self, messages: &[ChatMessage]) -> Result<String, AIError>;
+    async fn chat(
+        &self,
+        messages: &[ChatMessage],
+        portfolio_context: &PortfolioContext,
+    ) -> Result<String>;
 }
 
 pub struct AnthropicProvider {
@@ -650,7 +721,7 @@ pub struct OpenAIProvider {
     model: String,  // gpt-4o
 }
 
-// Factory function
+// Factory
 pub fn create_provider(provider: &str, api_key: &str) -> Box<dyn AIProvider> {
     match provider {
         "anthropic" => Box::new(AnthropicProvider::new(api_key)),
@@ -660,322 +731,280 @@ pub fn create_provider(provider: &str, api_key: &str) -> Box<dyn AIProvider> {
 }
 ```
 
-### 5.2 Transaction Categorization AI
+### 4.2 Transaction Categorization
 
-**Goal:** Use AI to intelligently categorize transactions.
+```typescript
+// Prompt template
+const categorizationPrompt = `
+You are a cryptocurrency tax assistant. Categorize this transaction.
 
-**Prompt Template:**
-```
-You are a cryptocurrency tax assistant. Analyze this transaction and categorize it.
+Transaction:
+- Chain: ${chain}
+- From: ${from}
+- To: ${to}
+- Value: ${value}
+- Contract: ${contractName || "None"}
+- Method: ${methodName || "None"}
 
-Transaction Details:
-- Chain: {chain}
-- From: {from_address}
-- To: {to_address}
-- Value: {value} {asset}
-- Contract Interaction: {contract_name or "None"}
-- Method Called: {method_name or "None"}
-- Timestamp: {timestamp}
-
-Known Context:
-- User's addresses: {user_addresses}
-- Known exchange addresses: {exchange_addresses}
-- Known DEX routers: {dex_addresses}
+User's Addresses: ${userAddresses.join(', ')}
+Known DEXes: ${knownDexes.join(', ')}
 
 Respond with JSON:
 {
   "category": "<category>",
-  "sub_category": "<sub_category or null>",
   "confidence": <0.0-1.0>,
   "reasoning": "<brief explanation>"
 }
 
 Categories: transfer, swap, sale, purchase, airdrop, staking_reward,
-defi_deposit, defi_withdrawal, nft_purchase, nft_sale, bridge,
-payment_sent, payment_received, gift_sent, gift_received, fee, unknown
+defi_deposit, defi_withdrawal, nft_purchase, nft_sale, bridge, unknown
+`;
 ```
 
-### 5.3 Natural Language Query
+### 4.3 Natural Language Queries
 
-**Goal:** Allow users to query their portfolio in natural language.
-
-**Example Queries:**
+Example queries the AI can answer:
 - "How much ETH did I spend on gas this year?"
 - "What's my total profit on Bitcoin?"
-- "Show me all my airdrop income"
+- "Show me all airdrop income"
 - "Which tokens have I held for over a year?"
-- "What would my tax be if I sold all my SOL?"
-
-**Implementation:**
-- [ ] Parse user query with AI
-- [ ] Generate appropriate database queries
-- [ ] Format response in natural language
-- [ ] Support follow-up questions with context
-
-### 5.4 AI Chat Interface
-
-**Goal:** Conversational interface for portfolio insights.
-
-**Components:**
-- [ ] Chat panel (collapsible sidebar or modal)
-- [ ] Message history (stored locally)
-- [ ] Suggested prompts for new users
-- [ ] Context-aware suggestions based on current view
-- [ ] Export chat history
-
-**Features:**
-- [ ] Portfolio analysis: "Analyze my portfolio allocation"
-- [ ] Tax planning: "What are my unrealized gains?"
-- [ ] Transaction help: "Why was this categorized as income?"
-- [ ] Education: "Explain what impermanent loss is"
+- "What's my unrealized gain on SOL?"
 
 ---
 
-## Phase 6: UI/UX Implementation
+## Phase 5: UX Design System
 
-### 6.1 Design System
+### 5.1 Color Palette
 
-**Goal:** Create consistent, modern UI.
+```css
+/* Light Theme */
+--background: 248 250 252;      /* #F8FAFC */
+--foreground: 15 23 42;         /* #0F172A */
+--card: 255 255 255;
+--card-foreground: 15 23 42;
+--primary: 59 130 246;          /* #3B82F6 - Trust Blue */
+--success: 34 197 94;           /* #22C55E - Green */
+--warning: 245 158 11;          /* #F59E0B - Amber */
+--danger: 239 68 68;            /* #EF4444 - Red */
+--muted: 241 245 249;
+--border: 226 232 240;
 
-**Stack:**
-- Tailwind CSS for styling
-- shadcn/ui for components
-- Lucide for icons
-- Recharts for charts
-- Framer Motion for animations
-
-**Theme:**
-- Light/Dark mode with system preference detection
-- Color palette:
-  ```
-  Primary: Blue (#3B82F6)
-  Success: Green (#22C55E)
-  Warning: Amber (#F59E0B)
-  Danger: Red (#EF4444)
-
-  Dark mode background: #0F172A
-  Light mode background: #F8FAFC
-  ```
-
-### 6.2 Page Structure
-
-```
-/                       → Dashboard
-/wallets                → Wallet list
-/wallets/:id            → Wallet detail
-/transactions           → All transactions
-/transactions/:id       → Transaction detail
-/watch                  → Watch list
-/tax                    → Tax overview
-/tax/reports            → Generate reports
-/settings               → App settings
-/settings/ai            → AI provider config
+/* Dark Theme */
+--background: 15 23 42;         /* #0F172A */
+--foreground: 248 250 252;
+--card: 30 41 59;               /* #1E293B */
+--primary: 96 165 250;          /* #60A5FA - Brighter blue */
+--success: 74 222 128;
+--warning: 251 191 36;
+--danger: 248 113 113;
 ```
 
-### 6.3 Component Library
+### 5.2 Typography
 
-**Core Components:**
-- [ ] AppShell (layout with sidebar)
-- [ ] Navbar (top bar with search)
-- [ ] Sidebar (navigation)
-- [ ] Card (content container)
-- [ ] Table (data display)
-- [ ] Modal (dialogs)
-- [ ] Toast (notifications)
-- [ ] Tooltip (help text)
-- [ ] Badge (status indicators)
-- [ ] Button (actions)
-- [ ] Input (forms)
-- [ ] Select (dropdowns)
-- [ ] Tabs (section switching)
+```css
+/* Inter with tabular numbers for financial data */
+font-family: 'Inter', system-ui, sans-serif;
+font-variant-numeric: lining-nums tabular-nums;
 
-**Crypto-Specific Components:**
-- [ ] AddressDisplay (truncated with copy)
-- [ ] AssetIcon (chain/token logos)
-- [ ] PriceDisplay (with change indicator)
-- [ ] TransactionRow (list item)
-- [ ] WalletCard (wallet summary)
-- [ ] ChainBadge (network indicator)
-- [ ] QRCode (address display)
-- [ ] AmountInput (with asset selector)
+/* Type scale */
+--text-display-lg: 3rem;      /* 48px - Portfolio total */
+--text-display-md: 2.25rem;   /* 36px - Page titles */
+--text-xl: 1.25rem;           /* 20px - Section headers */
+--text-base: 1rem;            /* 16px - Body */
+--text-sm: 0.875rem;          /* 14px - Secondary */
+--text-xs: 0.75rem;           /* 12px - Captions */
+```
+
+### 5.3 Animation Patterns (Framer Motion)
+
+```typescript
+// Animation utilities
+export const transitions = {
+  fast: { duration: 0.15, ease: [0.22, 1, 0.36, 1] },
+  normal: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+  spring: { type: "spring", stiffness: 400, damping: 24 },
+  bouncy: { type: "spring", stiffness: 260, damping: 20 },
+};
+
+// Animated balance counter
+function AnimatedBalance({ value }: { value: number }) {
+  const spring = useSpring(0, { mass: 0.8, stiffness: 75, damping: 15 });
+  const display = useTransform(spring, (v) =>
+    Math.round(v).toLocaleString()
+  );
+
+  useEffect(() => { spring.set(value); }, [value]);
+
+  return <motion.span>${display}</motion.span>;
+}
+
+// Card interactions
+<motion.div
+  whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)" }}
+  whileTap={{ scale: 0.98 }}
+  transition={transitions.spring}
+>
+
+// Staggered list
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 }
+};
+```
+
+### 5.4 Loading States
+
+**Use skeleton screens, not spinners:**
+
+```tsx
+function TransactionSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="flex items-center gap-4 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: i * 0.05 }}
+        >
+          <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 bg-muted rounded w-1/4 animate-pulse" />
+            <div className="h-3 bg-muted rounded w-1/3 animate-pulse" />
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
+```
+
+### 5.5 Key Components
+
+**Phase 1 (Critical):**
+1. `AnimatedBalance` - Smooth number counting
+2. `SkeletonLoader` - Loading states for all views
+3. `TransactionRow` - Hover animations, quick actions
+4. `WalletCard` - Spring animations, interactions
+5. `PageTransition` - Smooth navigation
+
+**Phase 2 (Important):**
+6. `SendFlow` - Multi-step modal with preview
+7. `ReceiveModal` - QR code display
+8. `CategoryBadge` - Tax category indicators
+9. `Toast` - Success/error notifications
+10. `ChartCard` - Recharts with custom tooltips
 
 ---
 
-## Phase 7: Security Hardening
+## Implementation Schedule
 
-### 7.1 Encryption & Key Management
+### Sprint 1-2: Foundation
+- [ ] Tauri + React + Vite project setup
+- [ ] Database schema + SQLite integration
+- [ ] Basic app shell with navigation
+- [ ] Settings page (theme, currency)
+- [ ] Design system setup (Tailwind, shadcn/ui)
 
-- [ ] Master password with Argon2id KDF (memory=64MB, iterations=3)
-- [ ] AES-256-GCM for data encryption
-- [ ] Secure random number generation (ring or getrandom)
-- [ ] Memory zeroization for sensitive data
-- [ ] Auto-lock after inactivity timeout
-- [ ] Biometric unlock (where supported)
+### Sprint 3-4: Wallet Core
+- [ ] HD wallet generation (BIP39/BIP44)
+- [ ] Mnemonic import/export
+- [ ] Watch-only address import
+- [ ] Encrypted storage (keyring + AES-GCM)
+- [ ] Wallet management UI
 
-### 7.2 Application Security
+### Sprint 5-6: Bitcoin Integration
+- [ ] BDK adapter implementation
+- [ ] Electrum/Esplora sync
+- [ ] Balance fetching
+- [ ] Transaction history
+- [ ] Basic dashboard
 
-- [ ] CSP headers in Tauri config
-- [ ] No external script loading
-- [ ] Input validation on all user inputs
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] Rate limiting on API calls
-- [ ] Secure IPC (no exposed globals)
+### Sprint 7-8: Ethereum Integration
+- [ ] Viem setup + Tauri signing bridge
+- [ ] ERC-20 token support
+- [ ] Transaction history (Etherscan API)
+- [ ] L2 support (Arbitrum, Optimism, Base, Polygon)
+- [ ] Chain provider settings UI
 
-### 7.3 Backup & Recovery
+### Sprint 9-10: Tax Engine
+- [ ] Cost basis tracking (FIFO/LIFO/HIFO)
+- [ ] Rule-based categorization
+- [ ] Tax calculations (US, UK, Germany, France, India)
+- [ ] Report generation
+- [ ] Tax UI pages
 
-- [ ] Encrypted backup file export
-- [ ] Mnemonic phrase backup (one-time display)
-- [ ] Backup verification prompts
-- [ ] Import from backup file
-- [ ] Clear data / factory reset option
+### Sprint 11-12: AI Integration
+- [ ] AI provider abstraction
+- [ ] API key management UI
+- [ ] Transaction categorization
+- [ ] Natural language queries
+- [ ] Chat interface
 
----
-
-## Phase 8: Testing & Quality
-
-### 8.1 Testing Strategy
-
-**Rust Backend:**
-- [ ] Unit tests for all modules
-- [ ] Integration tests for chain adapters
-- [ ] Property-based testing for crypto operations
-- [ ] Fuzzing for parser code
-
-**React Frontend:**
-- [ ] Component tests with React Testing Library
-- [ ] Integration tests with MSW for API mocking
-- [ ] E2E tests with Playwright
-
-### 8.2 CI/CD Pipeline
-
-- [ ] GitHub Actions workflow
-- [ ] Rust: cargo test, clippy, fmt
-- [ ] TypeScript: vitest, eslint, prettier
-- [ ] Build artifacts for Windows, macOS, Linux
-- [ ] Code signing for releases
-- [ ] Auto-update mechanism
+### Sprint 13-14: Polish & Security
+- [ ] Security hardening
+- [ ] Error handling & logging
+- [ ] Performance optimization
+- [ ] Accessibility audit
+- [ ] Testing (Rust + React)
 
 ---
 
-## Implementation Order
+## Open Source Strategy
 
-### Sprint 1: Foundation (Weeks 1-2)
-1. Tauri + React project setup
-2. Database schema + SQLite integration
-3. Basic app shell with routing
-4. Settings page (theme, currency)
+### License
+- **MIT License** - Maximum adoption, community contributions
 
-### Sprint 2: Wallet Core (Weeks 3-4)
-1. HD wallet generation
-2. Mnemonic import
-3. Watch-only address import
-4. Encrypted storage
-5. Wallet management UI
+### Repository Structure
+```
+coinbox/
+├── apps/
+│   └── desktop/          # Tauri app
+├── packages/
+│   ├── data-model/       # Unified types (shared)
+│   ├── tax-engine/       # Tax calculations (Rust)
+│   └── chain-adapters/   # Chain integrations (Rust)
+├── docs/
+├── .github/
+│   └── workflows/        # CI/CD
+└── README.md
+```
 
-### Sprint 3: Bitcoin Integration (Weeks 5-6)
-1. Bitcoin chain adapter
-2. Balance fetching
-3. Transaction history
-4. Basic dashboard
-
-### Sprint 4: Ethereum Integration (Weeks 7-8)
-1. Ethereum chain adapter
-2. ERC-20 token support
-3. L2 support (Arbitrum, Optimism, Base)
-4. Multi-chain UI updates
-
-### Sprint 5: Solana Integration (Week 9)
-1. Solana chain adapter
-2. SPL token support
-3. UI updates
-
-### Sprint 6: Tax Engine (Weeks 10-11)
-1. Cost basis tracking
-2. Rule-based categorization
-3. Tax calculations
-4. Report generation
-5. Tax UI pages
-
-### Sprint 7: AI Integration (Week 12)
-1. AI provider abstraction
-2. API key management
-3. Transaction categorization
-4. Basic chat interface
-
-### Sprint 8: Polish & Security (Weeks 13-14)
-1. Security hardening
-2. Error handling
-3. Performance optimization
-4. Testing
-5. Documentation
+### Contribution Guidelines
+- Feature requests via GitHub Issues
+- PRs require tests + documentation
+- Chain adapter contributions welcome
+- Tax jurisdiction plugins encouraged
 
 ---
 
 ## Success Metrics
 
-**Launch Criteria:**
-- [ ] Create/import wallet for BTC, ETH, SOL
+**Launch Criteria (MVP):**
+- [ ] Create/import wallet (BTC, ETH)
 - [ ] Watch-only address support
 - [ ] View balances and transaction history
-- [ ] Manual transaction categorization
-- [ ] Generate basic tax report (CSV)
-- [ ] AI categorization (with API key)
+- [ ] Manual + AI transaction categorization
+- [ ] Generate tax report (CSV, US Form 8949)
 - [ ] Encrypted local storage
-- [ ] Windows + macOS builds
+- [ ] Windows + macOS + Linux builds
 
 **Post-Launch:**
-- [ ] More chains (Polygon, Cosmos ecosystem)
+- [ ] More L2s (zkSync, Scroll)
+- [ ] Solana support
 - [ ] DeFi position tracking
 - [ ] NFT gallery
 - [ ] Mobile companion app
 - [ ] Cloud sync (optional, E2E encrypted)
 - [ ] Price alerts
-- [ ] Portfolio rebalancing suggestions
 
 ---
 
-## Open Questions for Discussion
-
-1. **Chain Priority:** Should we launch with BTC+ETH only, or include Solana from day one?
-
-2. **Tax Jurisdiction:** Start with US tax rules only, or support UK/EU from the start?
-
-3. **AI Default:** Should Anthropic be the default/recommended provider?
-
-4. **Pricing Model:** Free with donations? Freemium with premium AI features? One-time purchase?
-
-5. **Open Source:** Should this be open source? Could build trust but also invite forks.
-
----
-
-## Technical Risks & Mitigations
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Chain API rate limits | High | Multiple fallback endpoints, aggressive caching |
-| Historical price data gaps | Medium | Multiple price sources, interpolation |
-| AI categorization errors | Medium | Always allow manual override, confidence scores |
-| Cross-platform build issues | Medium | CI matrix testing, Tauri community support |
-| SQLCipher licensing | Low | Use public domain SQLite + separate encryption |
-
----
-
-## Appendix: Migration from Current Codebase
-
-**What to Keep:**
-- Nothing (complete rewrite is cleaner)
-
-**What to Reference:**
-- User flow patterns (signup → dashboard → wallet)
-- API patterns for fiat rates (BitPay API)
-- Basic UI layout concepts
-
-**What to Archive:**
-- Move current `app/` and `server/` to `_legacy/` branch
-- Document for reference, do not maintain
-
----
-
-*Plan Version: 1.0*
-*Created: December 2024*
-*Status: Ready for Review*
+*Plan Version: 2.0*
+*Updated: December 2024*
+*Status: Ready for Implementation*
