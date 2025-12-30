@@ -1,0 +1,52 @@
+[package]
+name = "coinbox"
+version = "2.0.0"
+description = "A multi-chain portfolio intelligence platform"
+authors = ["Coinbox Contributors"]
+license = "MIT"
+repository = "https://github.com/itsyogesh/Coinbox"
+edition = "2021"
+
+[lib]
+name = "coinbox_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database (bundled-sqlcipher includes both bundled SQLite and SQLCipher encryption)
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID generation
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

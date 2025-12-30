@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Lock files (regenerated on install)
+package-lock.json
+src-tauri/Cargo.lock
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Tauri build
+src-tauri/target/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

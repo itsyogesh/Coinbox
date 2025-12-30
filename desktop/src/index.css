@@ -1,0 +1,179 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme */
+    --background: 210 40% 98%; /* #F8FAFC - slate-50 */
+    --foreground: 222 47% 11%; /* #0F172A - slate-900 */
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 60%; /* #3B82F6 - blue-500 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 20% 65%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%; /* #F1F5F9 - slate-100 */
+    --muted-foreground: 215 16% 47%; /* #64748B - slate-500 */
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --success: 142 71% 45%; /* #22C55E - green-500 */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%; /* #F59E0B - amber-500 */
+    --warning-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%; /* #EF4444 - red-500 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%; /* #E2E8F0 - slate-200 */
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 91% 60%;
+  }
+
+  .dark {
+    /* Dark theme */
+    --background: 222 47% 11%; /* #0F172A - slate-900 */
+    --foreground: 210 40% 98%; /* #F8FAFC - slate-50 */
+
+    --card: 217 33% 17%; /* #1E293B - slate-800 */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 213 94% 68%; /* #60A5FA - blue-400 */
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 25%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%; /* #94A3B8 - slate-400 */
+
+    --accent: 217 33% 25%;
+    --accent-foreground: 210 40% 98%;
+
+    --success: 142 69% 58%; /* #4ADE80 - green-400 */
+    --success-foreground: 222 47% 11%;
+
+    --warning: 43 96% 56%; /* #FBBF24 - amber-400 */
+    --warning-foreground: 222 47% 11%;
+
+    --destructive: 0 91% 71%; /* #F87171 - red-400 */
+    --destructive-foreground: 222 47% 11%;
+
+    --border: 217 33% 25%; /* #334155 - slate-700 */
+    --input: 217 33% 25%;
+    --ring: 213 94% 68%;
+
+    /* Sidebar */
+    --sidebar-background: 217 33% 17%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 213 94% 68%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 25%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 25%;
+    --sidebar-ring: 213 94% 68%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply antialiased;
+    font-feature-settings:
+      "cv02",
+      "cv03",
+      "cv04",
+      "cv11";
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  /* Tabular numbers for financial data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  /* Prevent text selection in UI elements */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Focus visible for accessibility */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /* Balance text wrapping */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-md;
+  }
+
+  /* Skeleton loading animation */
+  .skeleton {
+    @apply animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:1000px_100%];
+  }
+}
