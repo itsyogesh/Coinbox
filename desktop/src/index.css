@@ -1,4 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* Geist Font - Modern geometric sans-serif with character */
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+
+/* Fallback to Plus Jakarta Sans if Geist not available */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,99 +10,115 @@
 
 @layer base {
   :root {
-    /* Light theme */
-    --background: 210 40% 98%; /* #F8FAFC - slate-50 */
-    --foreground: 222 47% 11%; /* #0F172A - slate-900 */
+    /* Light theme - Refined Fintech aesthetic */
+    --background: 248 250 252; /* Slate-50 - warm white */
+    --foreground: 15 23 42; /* Slate-900 */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 15 23 42;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 15 23 42;
 
-    --primary: 217 91% 60%; /* #3B82F6 - blue-500 */
+    /* Primary: Deep Indigo */
+    --primary: 239 84% 67%; /* #6366F1 - Indigo-500 */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 20% 65%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 226 70% 94%; /* Indigo-100 */
+    --secondary-foreground: 243 75% 59%; /* Indigo-600 */
 
-    --muted: 210 40% 96%; /* #F1F5F9 - slate-100 */
-    --muted-foreground: 215 16% 47%; /* #64748B - slate-500 */
+    --muted: 241 245 249; /* Slate-100 as RGB for special cases */
+    --muted-hsl: 210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* Slate-500 */
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    /* Accent: Electric Teal */
+    --accent: 174 72% 56%; /* #2DD4BF - Teal-400 */
+    --accent-foreground: 15 23 42;
 
-    --success: 142 71% 45%; /* #22C55E - green-500 */
+    /* Semantic colors */
+    --success: 142 71% 45%; /* #22C55E - Green-500 */
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%; /* #F59E0B - amber-500 */
+    --warning: 38 92% 50%; /* #F59E0B - Amber-500 */
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%; /* #EF4444 - red-500 */
+    --destructive: 0 84% 60%; /* #EF4444 - Red-500 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%; /* #E2E8F0 - slate-200 */
+    --border: 214 32% 91%; /* Slate-200 */
     --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --ring: 239 84% 67%; /* Indigo-500 */
 
     --radius: 0.5rem;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-foreground: 15 23 42;
+    --sidebar-primary: 239 84% 67%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-accent: 226 70% 94%;
+    --sidebar-accent-foreground: 243 75% 59%;
     --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 239 84% 67%;
+
+    /* Chain-specific colors */
+    --chain-bitcoin: 36 96% 54%; /* #F7931A */
+    --chain-ethereum: 228 74% 65%; /* #627EEA */
+    --chain-arbitrum: 204 88% 55%; /* #28A0F0 */
+    --chain-optimism: 354 100% 51%; /* #FF0420 */
+    --chain-base: 222 100% 50%; /* #0052FF */
+    --chain-polygon: 261 70% 59%; /* #8247E5 */
   }
 
   .dark {
     /* Dark theme */
-    --background: 222 47% 11%; /* #0F172A - slate-900 */
-    --foreground: 210 40% 98%; /* #F8FAFC - slate-50 */
+    --background: 222 47% 11%; /* Slate-900 */
+    --foreground: 210 40% 98%; /* Slate-50 */
 
-    --card: 217 33% 17%; /* #1E293B - slate-800 */
+    --card: 217 33% 17%; /* Slate-800 */
     --card-foreground: 210 40% 98%;
 
     --popover: 217 33% 17%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 213 94% 68%; /* #60A5FA - blue-400 */
+    /* Primary: Lighter Indigo for dark mode */
+    --primary: 238 89% 73%; /* #818CF8 - Indigo-400 */
     --primary-foreground: 222 47% 11%;
 
-    --secondary: 217 33% 25%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 243 75% 27%; /* Indigo-900 */
+    --secondary-foreground: 226 70% 94%;
 
     --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%; /* #94A3B8 - slate-400 */
+    --muted-hsl: 217 33% 17%;
+    --muted-foreground: 215 20% 65%; /* Slate-400 */
 
-    --accent: 217 33% 25%;
+    /* Accent: Brighter Teal for dark mode */
+    --accent: 172 66% 50%; /* #14B8A6 - Teal-500 */
     --accent-foreground: 210 40% 98%;
 
-    --success: 142 69% 58%; /* #4ADE80 - green-400 */
+    /* Semantic colors - brighter for dark mode */
+    --success: 142 69% 58%; /* #4ADE80 - Green-400 */
     --success-foreground: 222 47% 11%;
 
-    --warning: 43 96% 56%; /* #FBBF24 - amber-400 */
+    --warning: 43 96% 56%; /* #FBBF24 - Amber-400 */
     --warning-foreground: 222 47% 11%;
 
-    --destructive: 0 91% 71%; /* #F87171 - red-400 */
+    --destructive: 0 91% 71%; /* #F87171 - Red-400 */
     --destructive-foreground: 222 47% 11%;
 
-    --border: 217 33% 25%; /* #334155 - slate-700 */
+    --border: 217 33% 25%; /* Slate-700 */
     --input: 217 33% 25%;
-    --ring: 213 94% 68%;
+    --ring: 238 89% 73%;
 
     /* Sidebar */
     --sidebar-background: 217 33% 17%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 213 94% 68%;
+    --sidebar-primary: 238 89% 73%;
     --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 217 33% 25%;
-    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-accent: 243 75% 27%;
+    --sidebar-accent-foreground: 226 70% 94%;
     --sidebar-border: 217 33% 25%;
-    --sidebar-ring: 213 94% 68%;
+    --sidebar-ring: 238 89% 73%;
   }
 }
 
@@ -109,21 +129,45 @@
 
   html {
     @apply antialiased;
+    /* OpenType features for refined typography */
     font-feature-settings:
       "cv02",
       "cv03",
       "cv04",
-      "cv11";
+      "cv11",
+      "ss01";
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", system-ui, sans-serif;
+    font-family: "Geist", "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
+  /* Typography Scale */
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold tracking-tight;
+  }
+
+  h3 {
+    @apply text-xl font-semibold;
+  }
+
+  h4 {
+    @apply text-lg font-medium;
   }
 
   /* Tabular numbers for financial data */
   .tabular-nums {
     font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Monospace for addresses, hashes, and amounts */
+  .font-mono {
+    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
   }
 
   /* Custom scrollbar */
@@ -162,18 +206,65 @@
     text-wrap: balance;
   }
 
-  /* Gradient text */
+  /* Gradient text - using indigo primary */
   .gradient-text {
-    @apply bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
 
   /* Glass effect */
   .glass {
-    @apply bg-background/80 backdrop-blur-md;
+    @apply bg-background/80 backdrop-blur-xl border border-white/10;
+  }
+
+  .dark .glass {
+    @apply bg-card/80 border-white/5;
   }
 
   /* Skeleton loading animation */
   .skeleton {
     @apply animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:1000px_100%];
+  }
+
+  /* Subtle grain texture overlay */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  /* Financial number formatting */
+  .number-positive {
+    @apply text-success tabular-nums font-mono;
+  }
+
+  .number-negative {
+    @apply text-destructive tabular-nums font-mono;
+  }
+
+  .number-neutral {
+    @apply text-muted-foreground tabular-nums font-mono;
+  }
+
+  /* Chain colors */
+  .chain-bitcoin {
+    color: hsl(var(--chain-bitcoin));
+  }
+  .chain-ethereum {
+    color: hsl(var(--chain-ethereum));
+  }
+  .chain-arbitrum {
+    color: hsl(var(--chain-arbitrum));
+  }
+  .chain-optimism {
+    color: hsl(var(--chain-optimism));
+  }
+  .chain-base {
+    color: hsl(var(--chain-base));
+  }
+  .chain-polygon {
+    color: hsl(var(--chain-polygon));
   }
 }
