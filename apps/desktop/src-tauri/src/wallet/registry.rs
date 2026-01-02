@@ -25,17 +25,19 @@ use crate::wallet::types::{ChainFamily, DerivedAddress};
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ChainInfo {
     /// Unique chain identifier (e.g., "ethereum", "bitcoin")
-    pub chain_id: String,
+    pub id: String,
     /// Human-readable display name
-    pub display_name: String,
+    pub name: String,
+    /// Token symbol (e.g., "ETH", "BTC")
+    pub symbol: String,
     /// Cryptographic family (secp256k1, ed25519, etc.)
     pub family: ChainFamily,
     /// SLIP-44 coin type
     pub coin_type: u32,
     /// Whether this is a testnet
     pub is_testnet: bool,
-    /// Address prefix (if any)
-    pub address_prefix: Option<String>,
+    /// Icon name for frontend
+    pub icon_name: String,
 }
 
 /// Registry of all supported blockchain chains
@@ -107,12 +109,13 @@ impl ChainRegistry {
         self.modules
             .values()
             .map(|m| ChainInfo {
-                chain_id: m.chain_id().to_string(),
-                display_name: m.display_name().to_string(),
+                id: m.chain_id().to_string(),
+                name: m.display_name().to_string(),
+                symbol: m.symbol().to_string(),
                 family: m.chain_family(),
                 coin_type: m.coin_type(),
                 is_testnet: m.is_testnet(),
-                address_prefix: m.address_prefix().map(String::from),
+                icon_name: m.icon_name().to_string(),
             })
             .collect()
     }
@@ -242,14 +245,16 @@ mod tests {
         assert!(chains.len() >= 7);
 
         // Check bitcoin
-        let btc = chains.iter().find(|c| c.chain_id == "bitcoin").unwrap();
-        assert_eq!(btc.display_name, "Bitcoin");
+        let btc = chains.iter().find(|c| c.id == "bitcoin").unwrap();
+        assert_eq!(btc.name, "Bitcoin");
+        assert_eq!(btc.symbol, "BTC");
         assert_eq!(btc.family, ChainFamily::Secp256k1);
         assert!(!btc.is_testnet);
 
         // Check solana
-        let sol = chains.iter().find(|c| c.chain_id == "solana").unwrap();
-        assert_eq!(sol.display_name, "Solana");
+        let sol = chains.iter().find(|c| c.id == "solana").unwrap();
+        assert_eq!(sol.name, "Solana");
+        assert_eq!(sol.symbol, "SOL");
         assert_eq!(sol.family, ChainFamily::Ed25519);
     }
 
@@ -271,7 +276,7 @@ mod tests {
 
         // All should be mainnets
         for chain in &mainnets {
-            assert!(!chain.is_testnet, "{} should be mainnet", chain.chain_id);
+            assert!(!chain.is_testnet, "{} should be mainnet", chain.id);
         }
     }
 

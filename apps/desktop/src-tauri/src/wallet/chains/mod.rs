@@ -134,6 +134,14 @@ pub trait ChainModule: Send + Sync {
     fn address_prefix(&self) -> Option<&str> {
         None
     }
+
+    /// Token symbol (e.g., "ETH", "BTC", "SOL")
+    fn symbol(&self) -> &str;
+
+    /// Icon name for frontend display
+    fn icon_name(&self) -> &str {
+        self.chain_id()
+    }
 }
 
 // Re-export specific chain modules

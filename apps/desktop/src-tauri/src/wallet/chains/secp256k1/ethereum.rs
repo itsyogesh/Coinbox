@@ -27,25 +27,27 @@ use super::derive_key_from_seed;
 pub struct EthereumModule {
     chain_id: String,
     display_name: String,
+    symbol: String,
     is_testnet: bool,
 }
 
 impl EthereumModule {
     /// Create a new Ethereum mainnet module
     pub fn new(chain_id: &str) -> Self {
-        let display_name = match chain_id {
-            "ethereum" => "Ethereum",
-            "arbitrum" => "Arbitrum One",
-            "optimism" => "Optimism",
-            "base" => "Base",
-            "polygon" => "Polygon",
-            "avalanche" => "Avalanche C-Chain",
-            _ => chain_id,
+        let (display_name, symbol) = match chain_id {
+            "ethereum" => ("Ethereum", "ETH"),
+            "arbitrum" => ("Arbitrum One", "ETH"),
+            "optimism" => ("Optimism", "ETH"),
+            "base" => ("Base", "ETH"),
+            "polygon" => ("Polygon", "MATIC"),
+            "avalanche" => ("Avalanche C-Chain", "AVAX"),
+            _ => (chain_id, "ETH"),
         };
 
         Self {
             chain_id: chain_id.to_string(),
             display_name: display_name.to_string(),
+            symbol: symbol.to_string(),
             is_testnet: false,
         }
     }
@@ -55,6 +57,7 @@ impl EthereumModule {
         Self {
             chain_id: chain_id.to_string(),
             display_name: display_name.to_string(),
+            symbol: "ETH".to_string(),
             is_testnet: true,
         }
     }
@@ -165,6 +168,10 @@ impl ChainModule for EthereumModule {
 
     fn is_testnet(&self) -> bool {
         self.is_testnet
+    }
+
+    fn symbol(&self) -> &str {
+        &self.symbol
     }
 
     fn derive_address(

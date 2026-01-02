@@ -249,9 +249,9 @@ mod tests {
         let chains = manager.get_supported_chains();
 
         assert!(!chains.is_empty());
-        assert!(chains.iter().any(|c| c.chain_id == "bitcoin"));
-        assert!(chains.iter().any(|c| c.chain_id == "ethereum"));
-        assert!(chains.iter().any(|c| c.chain_id == "solana"));
+        assert!(chains.iter().any(|c| c.id == "bitcoin"));
+        assert!(chains.iter().any(|c| c.id == "ethereum"));
+        assert!(chains.iter().any(|c| c.id == "solana"));
     }
 
     #[test]

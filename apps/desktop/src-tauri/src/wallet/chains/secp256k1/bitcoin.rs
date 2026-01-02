@@ -70,6 +70,10 @@ impl ChainModule for BitcoinModule {
         matches!(self.network, Network::Testnet | Network::Signet | Network::Regtest)
     }
 
+    fn symbol(&self) -> &str {
+        "BTC"
+    }
+
     fn derive_address(
         &self,
         seed: &[u8; 64],

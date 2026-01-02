@@ -71,6 +71,10 @@ impl ChainModule for SolanaModule {
         self.is_devnet
     }
 
+    fn symbol(&self) -> &str {
+        "SOL"
+    }
+
     fn derive_address(
         &self,
         seed: &[u8; 64],
