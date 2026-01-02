@@ -38,7 +38,7 @@ export default {
           foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted-hsl))",
+          DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
         accent: {
@@ -56,57 +56,49 @@ export default {
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
+          border: "hsl(var(--sidebar-border))",
+          muted: "hsl(var(--sidebar-muted))",
+          "muted-foreground": "hsl(var(--sidebar-muted-foreground))",
           accent: "hsl(var(--sidebar-accent))",
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
-        },
-        // Chain-specific colors
-        chain: {
-          bitcoin: "hsl(var(--chain-bitcoin))",
-          ethereum: "hsl(var(--chain-ethereum))",
-          arbitrum: "hsl(var(--chain-arbitrum))",
-          optimism: "hsl(var(--chain-optimism))",
-          base: "hsl(var(--chain-base))",
-          polygon: "hsl(var(--chain-polygon))",
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
       },
       fontFamily: {
         sans: [
-          "Geist",
-          "Plus Jakarta Sans",
-          "ui-sans-serif",
+          "Inter",
           "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
           "sans-serif",
-          '"Apple Color Emoji"',
-          '"Segoe UI Emoji"',
-          '"Segoe UI Symbol"',
-          '"Noto Color Emoji"',
+        ],
+        heading: [
+          "Sora",
+          "system-ui",
+          "-apple-system",
+          "sans-serif",
         ],
         mono: [
-          "Geist Mono",
           "JetBrains Mono",
           "ui-monospace",
           "SFMono-Regular",
-          "Menlo",
-          "Monaco",
-          "Consolas",
-          "Liberation Mono",
-          "Courier New",
           "monospace",
         ],
       },
       fontSize: {
-        // Custom typography scale for financial data
-        "display": ["3rem", { lineHeight: "1", letterSpacing: "-0.02em", fontWeight: "700" }],
-        "title": ["2.25rem", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "700" }],
+        "display-lg": ["3.5rem", { lineHeight: "1", letterSpacing: "-0.03em", fontWeight: "700" }],
+        "display": ["3rem", { lineHeight: "1.1", letterSpacing: "-0.025em", fontWeight: "700" }],
+        "display-sm": ["2.25rem", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "600" }],
+      },
+      spacing: {
+        "18": "4.5rem",
+        "88": "22rem",
       },
       keyframes: {
         "accordion-down": {
@@ -121,53 +113,42 @@ export default {
           "0%": { backgroundPosition: "-1000px 0" },
           "100%": { backgroundPosition: "1000px 0" },
         },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "fade-out": {
-          "0%": { opacity: "1" },
-          "100%": { opacity: "0" },
+        "fade-down": {
+          "0%": { opacity: "0", transform: "translateY(-10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "slide-in-from-top": {
-          "0%": { transform: "translateY(-100%)" },
-          "100%": { transform: "translateY(0)" },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.95)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
-        "slide-in-from-bottom": {
-          "0%": { transform: "translateY(100%)" },
-          "100%": { transform: "translateY(0)" },
-        },
-        "slide-in-from-left": {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        "slide-in-from-right": {
-          "0%": { transform: "translateX(100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        "count-up": {
-          "0%": { transform: "translateY(100%)", opacity: "0" },
-          "100%": { transform: "translateY(0)", opacity: "1" },
+        pulse: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 2s infinite linear",
-        "fade-in": "fade-in 0.2s ease-out",
-        "fade-out": "fade-out 0.2s ease-out",
-        "slide-in-from-top": "slide-in-from-top 0.2s ease-out",
-        "slide-in-from-bottom": "slide-in-from-bottom 0.2s ease-out",
-        "slide-in-from-left": "slide-in-from-left 0.2s ease-out",
-        "slide-in-from-right": "slide-in-from-right 0.2s ease-out",
-        "count-up": "count-up 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+        "fade-up": "fade-up 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+        "fade-down": "fade-down 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+        "scale-in": "scale-in 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+        pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
       },
       boxShadow: {
-        // Refined shadows for fintech aesthetic
-        "soft": "0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 4px rgba(0, 0, 0, 0.04)",
-        "card": "0 2px 8px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04)",
-        "card-hover": "0 8px 24px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04)",
-        "elevated": "0 12px 40px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04)",
+        "soft": "0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)",
+        "medium": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+        "elevated": "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+        "glow-sm": "0 0 15px -3px hsl(var(--primary) / 0.3)",
+        "glow": "0 0 25px -5px hsl(var(--primary) / 0.4)",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-subtle": "linear-gradient(135deg, var(--tw-gradient-stops))",
       },
     },
   },

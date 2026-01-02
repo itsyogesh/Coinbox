@@ -1,8 +1,5 @@
-/* Geist Font - Modern geometric sans-serif with character */
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
-
-/* Fallback to Plus Jakarta Sans if Geist not available */
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+/* Typography: Sora for headings (geometric, confident), Inter for body */
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -10,115 +7,101 @@
 
 @layer base {
   :root {
-    /* Light theme - Refined Fintech aesthetic */
-    --background: 248 250 252; /* Slate-50 - warm white */
-    --foreground: 15 23 42; /* Slate-900 */
+    /* Light theme */
+    --background: 0 0% 98%;
+    --foreground: 240 10% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 15 23 42;
+    --card-foreground: 240 10% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 15 23 42;
+    --popover-foreground: 240 10% 10%;
 
-    /* Primary: Deep Indigo */
-    --primary: 239 84% 67%; /* #6366F1 - Indigo-500 */
+    /* Primary: Rich Violet */
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 226 70% 94%; /* Indigo-100 */
-    --secondary-foreground: 243 75% 59%; /* Indigo-600 */
+    --secondary: 260 50% 95%;
+    --secondary-foreground: 262 83% 58%;
 
-    --muted: 241 245 249; /* Slate-100 as RGB for special cases */
-    --muted-hsl: 210 40% 96%;
-    --muted-foreground: 215 16% 47%; /* Slate-500 */
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 5% 45%;
 
-    /* Accent: Electric Teal */
-    --accent: 174 72% 56%; /* #2DD4BF - Teal-400 */
-    --accent-foreground: 15 23 42;
+    --accent: 262 83% 95%;
+    --accent-foreground: 262 83% 45%;
 
-    /* Semantic colors */
-    --success: 142 71% 45%; /* #22C55E - Green-500 */
+    /* Semantic */
+    --success: 152 69% 40%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%; /* #F59E0B - Amber-500 */
+    --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%; /* #EF4444 - Red-500 */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%; /* Slate-200 */
-    --input: 214 32% 91%;
-    --ring: 239 84% 67%; /* Indigo-500 */
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 262 83% 58%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 15 23 42;
-    --sidebar-primary: 239 84% 67%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 226 70% 94%;
-    --sidebar-accent-foreground: 243 75% 59%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 239 84% 67%;
-
-    /* Chain-specific colors */
-    --chain-bitcoin: 36 96% 54%; /* #F7931A */
-    --chain-ethereum: 228 74% 65%; /* #627EEA */
-    --chain-arbitrum: 204 88% 55%; /* #28A0F0 */
-    --chain-optimism: 354 100% 51%; /* #FF0420 */
-    --chain-base: 222 100% 50%; /* #0052FF */
-    --chain-polygon: 261 70% 59%; /* #8247E5 */
+    --sidebar-foreground: 240 10% 10%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-muted: 240 5% 96%;
+    --sidebar-muted-foreground: 240 5% 45%;
+    --sidebar-accent: 262 83% 95%;
+    --sidebar-accent-foreground: 262 83% 45%;
   }
 
   .dark {
-    /* Dark theme */
-    --background: 222 47% 11%; /* Slate-900 */
-    --foreground: 210 40% 98%; /* Slate-50 */
+    /* Deep layered dark - not flat gray */
+    --background: 240 10% 6%;
+    --foreground: 0 0% 95%;
 
-    --card: 217 33% 17%; /* Slate-800 */
-    --card-foreground: 210 40% 98%;
+    --card: 240 10% 9%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 10% 9%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Primary: Lighter Indigo for dark mode */
-    --primary: 238 89% 73%; /* #818CF8 - Indigo-400 */
-    --primary-foreground: 222 47% 11%;
+    /* Primary: Lighter violet for dark */
+    --primary: 263 70% 65%;
+    --primary-foreground: 240 10% 6%;
 
-    --secondary: 243 75% 27%; /* Indigo-900 */
-    --secondary-foreground: 226 70% 94%;
+    --secondary: 260 30% 18%;
+    --secondary-foreground: 263 70% 75%;
 
-    --muted: 217 33% 17%;
-    --muted-hsl: 217 33% 17%;
-    --muted-foreground: 215 20% 65%; /* Slate-400 */
+    --muted: 240 8% 14%;
+    --muted-foreground: 240 5% 55%;
 
-    /* Accent: Brighter Teal for dark mode */
-    --accent: 172 66% 50%; /* #14B8A6 - Teal-500 */
-    --accent-foreground: 210 40% 98%;
+    --accent: 262 50% 20%;
+    --accent-foreground: 263 70% 80%;
 
-    /* Semantic colors - brighter for dark mode */
-    --success: 142 69% 58%; /* #4ADE80 - Green-400 */
-    --success-foreground: 222 47% 11%;
+    /* Semantic - brighter for dark */
+    --success: 152 60% 50%;
+    --success-foreground: 240 10% 6%;
 
-    --warning: 43 96% 56%; /* #FBBF24 - Amber-400 */
-    --warning-foreground: 222 47% 11%;
+    --warning: 43 96% 56%;
+    --warning-foreground: 240 10% 6%;
 
-    --destructive: 0 91% 71%; /* #F87171 - Red-400 */
-    --destructive-foreground: 222 47% 11%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 240 10% 6%;
 
-    --border: 217 33% 25%; /* Slate-700 */
-    --input: 217 33% 25%;
-    --ring: 238 89% 73%;
+    --border: 240 8% 18%;
+    --input: 240 8% 18%;
+    --ring: 263 70% 65%;
 
-    /* Sidebar */
-    --sidebar-background: 217 33% 17%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 238 89% 73%;
-    --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 243 75% 27%;
-    --sidebar-accent-foreground: 226 70% 94%;
-    --sidebar-border: 217 33% 25%;
-    --sidebar-ring: 238 89% 73%;
+    /* Sidebar - slightly elevated */
+    --sidebar-background: 240 10% 8%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-border: 240 8% 15%;
+    --sidebar-muted: 240 8% 12%;
+    --sidebar-muted-foreground: 240 5% 55%;
+    --sidebar-accent: 262 50% 18%;
+    --sidebar-accent-foreground: 263 70% 80%;
   }
 }
 
@@ -129,27 +112,31 @@
 
   html {
     @apply antialiased;
-    /* OpenType features for refined typography */
-    font-feature-settings:
-      "cv02",
-      "cv03",
-      "cv04",
-      "cv11",
-      "ss01";
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Geist", "Plus Jakarta Sans", system-ui, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-optical-sizing: auto;
   }
 
-  /* Typography Scale */
+  /* Heading typography with Sora */
+  h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: "Sora", system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
   h1 {
-    @apply text-4xl font-bold tracking-tight;
+    @apply text-4xl font-bold;
+    letter-spacing: -0.03em;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-semibold;
   }
 
   h3 {
@@ -160,20 +147,21 @@
     @apply text-lg font-medium;
   }
 
-  /* Tabular numbers for financial data */
+  /* Monospace for financial data */
+  .font-mono, code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+  }
+
+  /* Tabular figures for numbers */
   .tabular-nums {
     font-variant-numeric: tabular-nums lining-nums;
   }
 
-  /* Monospace for addresses, hashes, and amounts */
-  .font-mono {
-    font-family: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
-  }
-
-  /* Custom scrollbar */
+  /* Custom scrollbar - subtle */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   ::-webkit-scrollbar-track {
@@ -182,89 +170,129 @@
 
   ::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full;
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/50;
+    @apply bg-muted-foreground/40;
   }
 
-  /* Prevent text selection in UI elements */
-  .no-select {
-    -webkit-user-select: none;
-    user-select: none;
-  }
-
-  /* Focus visible for accessibility */
+  /* Focus states */
   :focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+}
+
+@layer components {
+  /* Premium card styling */
+  .card-premium {
+    @apply bg-card border border-border/50 rounded-xl;
+    @apply shadow-sm;
+    @apply transition-all duration-200;
+  }
+
+  .card-premium:hover {
+    @apply border-border shadow-md;
+  }
+
+  .dark .card-premium {
+    @apply bg-gradient-to-br from-card to-card/80;
+    @apply border-border/30;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 2px 4px rgba(0, 0, 0, 0.1),
+      0 12px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .card-premium:hover {
+    @apply border-border/50;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 4px 8px rgba(0, 0, 0, 0.15),
+      0 16px 32px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Stat card variant */
+  .stat-card {
+    @apply card-premium p-6;
+  }
+
+  /* Glass effect - subtle */
+  .glass {
+    @apply bg-background/60 backdrop-blur-xl;
+    @apply border border-white/10;
+  }
+
+  .dark .glass {
+    @apply bg-card/40 border-white/5;
   }
 }
 
 @layer utilities {
-  /* Balance text wrapping */
-  .text-balance {
-    text-wrap: balance;
+  /* Financial number styling */
+  .value-positive {
+    @apply text-success font-mono tabular-nums;
   }
 
-  /* Gradient text - using indigo primary */
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
+  .value-negative {
+    @apply text-destructive font-mono tabular-nums;
   }
 
-  /* Glass effect */
-  .glass {
-    @apply bg-background/80 backdrop-blur-xl border border-white/10;
+  .value-neutral {
+    @apply text-muted-foreground font-mono tabular-nums;
   }
 
-  .dark .glass {
-    @apply bg-card/80 border-white/5;
+  /* Large display numbers */
+  .display-value {
+    @apply text-4xl font-heading font-bold tracking-tight tabular-nums;
+    letter-spacing: -0.03em;
   }
 
-  /* Skeleton loading animation */
-  .skeleton {
-    @apply animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:1000px_100%];
-  }
-
-  /* Subtle grain texture overlay */
+  /* Subtle grain texture */
   .grain::before {
     content: "";
     position: absolute;
     inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
-    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.015;
     pointer-events: none;
+    border-radius: inherit;
   }
 
-  /* Financial number formatting */
-  .number-positive {
-    @apply text-success tabular-nums font-mono;
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent;
   }
 
-  .number-negative {
-    @apply text-destructive tabular-nums font-mono;
+  /* Subtle glow */
+  .glow-primary {
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
   }
 
-  .number-neutral {
-    @apply text-muted-foreground tabular-nums font-mono;
+  /* Animation utilities */
+  .animate-in {
+    animation: fadeIn 0.3s ease-out;
   }
 
-  /* Chain colors */
-  .chain-bitcoin {
-    color: hsl(var(--chain-bitcoin));
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-  .chain-ethereum {
-    color: hsl(var(--chain-ethereum));
-  }
-  .chain-arbitrum {
-    color: hsl(var(--chain-arbitrum));
-  }
-  .chain-optimism {
-    color: hsl(var(--chain-optimism));
-  }
-  .chain-base {
-    color: hsl(var(--chain-base));
-  }
-  .chain-polygon {
-    color: hsl(var(--chain-polygon));
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-muted animate-pulse rounded;
   }
 }

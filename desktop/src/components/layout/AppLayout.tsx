@@ -1,18 +1,18 @@
 import * as React from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Wallet,
   ArrowLeftRight,
-  Receipt,
+  FileText,
   Settings,
   ChevronLeft,
-  ChevronRight,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -24,13 +24,14 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   path: string;
+  badge?: string;
 }
 
 const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
   { label: "Wallets", icon: Wallet, path: "/wallets" },
   { label: "Transactions", icon: ArrowLeftRight, path: "/transactions" },
-  { label: "Tax Reports", icon: Receipt, path: "/tax" },
+  { label: "Tax Reports", icon: FileText, path: "/tax" },
 ];
 
 const bottomNavItems: NavItem[] = [
@@ -47,39 +48,80 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-background overflow-hidden">
         {/* Sidebar */}
         <motion.aside
           initial={false}
-          animate={{ width: collapsed ? 64 : 240 }}
+          animate={{ width: collapsed ? 72 : 260 }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="relative flex flex-col border-r bg-card"
+          className={cn(
+            "relative flex flex-col h-full",
+            "bg-sidebar border-r border-sidebar-border",
+            "shrink-0"
+          )}
         >
-          {/* Logo */}
-          <div className="flex h-14 items-center px-4">
-            <motion.div
-              initial={false}
-              animate={{ opacity: collapsed ? 0 : 1 }}
-              className="flex items-center gap-2 overflow-hidden"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Wallet className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-semibold tracking-tight">Coinbox</span>
-            </motion.div>
-            {collapsed && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Wallet className="h-4 w-4 text-primary-foreground" />
-              </div>
-            )}
+          {/* Logo area */}
+          <div className="h-16 flex items-center px-5 shrink-0">
+            <AnimatePresence mode="wait">
+              {collapsed ? (
+                <motion.div
+                  key="collapsed"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Logo size="sm" showText={false} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="expanded"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Logo size="md" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <Separator />
+          {/* Quick action */}
+          <div className="px-3 mb-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  size={collapsed ? "icon" : "default"}
+                  className={cn(
+                    "w-full justify-start gap-3 h-10",
+                    "bg-primary/10 text-primary hover:bg-primary/20",
+                    "border border-primary/20",
+                    collapsed && "justify-center px-0"
+                  )}
+                >
+                  <Plus className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span>Add Wallet</span>}
+                </Button>
+              </TooltipTrigger>
+              {collapsed && (
+                <TooltipContent side="right">Add Wallet</TooltipContent>
+              )}
+            </Tooltip>
+          </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-2">
+          {/* Main navigation */}
+          <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+            <div className="mb-3">
+              {!collapsed && (
+                <span className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Menu
+                </span>
+              )}
+            </div>
             {navItems.map((item) => (
-              <NavItem
+              <NavItemComponent
                 key={item.path}
                 item={item}
                 collapsed={collapsed}
@@ -89,10 +131,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           </nav>
 
           {/* Bottom navigation */}
-          <div className="space-y-1 p-2">
-            <Separator className="mb-2" />
+          <div className="px-3 py-4 mt-auto border-t border-sidebar-border">
             {bottomNavItems.map((item) => (
-              <NavItem
+              <NavItemComponent
                 key={item.path}
                 item={item}
                 collapsed={collapsed}
@@ -102,23 +143,36 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
 
           {/* Collapse toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
+          <button
             onClick={() => setCollapsed(!collapsed)}
-            className="absolute -right-3 top-6 h-6 w-6 rounded-full border bg-background shadow-sm"
-          >
-            {collapsed ? (
-              <ChevronRight className="h-3 w-3" />
-            ) : (
-              <ChevronLeft className="h-3 w-3" />
+            className={cn(
+              "absolute -right-3 top-7",
+              "flex items-center justify-center",
+              "h-6 w-6 rounded-full",
+              "bg-background border border-border",
+              "text-muted-foreground hover:text-foreground",
+              "shadow-sm hover:shadow",
+              "transition-all duration-200",
+              "z-10"
             )}
-          </Button>
+          >
+            <motion.div
+              animate={{ rotate: collapsed ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </motion.div>
+          </button>
         </motion.aside>
 
-        {/* Main content */}
-        <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-6">{children}</div>
+        {/* Main content area */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="max-w-7xl mx-auto px-8 py-8">
+              {children}
+            </div>
+          </div>
         </main>
       </div>
     </TooltipProvider>
@@ -131,45 +185,67 @@ interface NavItemProps {
   isActive: boolean;
 }
 
-function NavItem({ item, collapsed, isActive }: NavItemProps) {
+function NavItemComponent({ item, collapsed, isActive }: NavItemProps) {
   const Icon = item.icon;
 
-  const link = (
-    <NavLink
-      to={item.path}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-        "hover:bg-accent hover:text-accent-foreground",
-        isActive && "bg-accent text-accent-foreground font-medium"
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      <motion.span
-        initial={false}
-        animate={{
-          opacity: collapsed ? 0 : 1,
-          width: collapsed ? 0 : "auto",
-        }}
-        className="overflow-hidden whitespace-nowrap"
-      >
-        {item.label}
-      </motion.span>
+  const content = (
+    <div className="relative">
+      {/* Active indicator - positioned relative to outer container */}
       {isActive && (
         <motion.div
-          layoutId="activeIndicator"
-          className="absolute left-0 h-6 w-1 rounded-r-full bg-primary"
+          layoutId="activeNavIndicator"
+          className="absolute -left-3 top-0 bottom-0 w-1 bg-primary rounded-r-full"
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
         />
       )}
-    </NavLink>
+
+      <NavLink
+        to={item.path}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg",
+          "text-sm font-medium transition-all duration-200",
+          "hover:bg-sidebar-accent",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-sidebar-muted-foreground hover:text-sidebar-foreground",
+          collapsed && "justify-center px-2.5"
+        )}
+      >
+        <Icon
+          className={cn(
+            "h-[18px] w-[18px] shrink-0 transition-colors",
+            isActive ? "text-primary" : "text-current"
+          )}
+        />
+
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.span
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: "auto" }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.15 }}
+              className="truncate"
+            >
+              {item.label}
+            </motion.span>
+          )}
+        </AnimatePresence>
+
+        {/* Badge */}
+        {item.badge && !collapsed && (
+          <span className="ml-auto text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+            {item.badge}
+          </span>
+        )}
+      </NavLink>
+    </div>
   );
 
   if (collapsed) {
     return (
       <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="relative">{link}</div>
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
         <TooltipContent side="right" className="font-medium">
           {item.label}
         </TooltipContent>
@@ -177,5 +253,5 @@ function NavItem({ item, collapsed, isActive }: NavItemProps) {
     );
   }
 
-  return <div className="relative">{link}</div>;
+  return content;
 }
