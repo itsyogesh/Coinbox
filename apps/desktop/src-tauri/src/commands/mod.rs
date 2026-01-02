@@ -1,7 +1,12 @@
+pub mod wallet;
+
 use crate::db::Database;
 use crate::Result;
 use serde::{Deserialize, Serialize};
 use tauri::State;
+
+// Re-export wallet commands
+pub use wallet::*;
 
 // ============================================================================
 // Types

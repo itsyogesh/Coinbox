@@ -40,6 +40,53 @@ chrono = { version = "0.4", features = ["serde"] }
 # UUID generation
 uuid = { version = "1", features = ["v4", "serde"] }
 
+# =============================================================================
+# Wallet Core Dependencies
+# =============================================================================
+
+# Secure storage (IOTA Stronghold)
+tauri-plugin-stronghold = "2"
+
+# Memory security - secure erasure of secrets
+zeroize = { version = "1", features = ["derive"] }
+
+# BIP39 mnemonic generation and validation
+bip39 = "2"
+
+# Secp256k1 key derivation (Bitcoin, Ethereum, Cosmos, Avalanche)
+bip32 = "0.5"
+coins-bip32 = "0.11"
+k256 = { version = "0.13", features = ["ecdsa"] }
+
+# Bitcoin address generation (BIP84 Native SegWit)
+bitcoin = { version = "0.32", features = ["secp-recovery"] }
+
+# Ed25519 key derivation (Solana, NEAR)
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+slip10_ed25519 = "0.1"
+
+# Encoding
+bs58 = "0.5"
+hex = "0.4"
+
+# Hashing
+sha2 = "0.10"
+sha3 = "0.10"
+hmac = "0.12"
+
+# Random number generation
+rand = "0.8"
+
+# Async traits
+async-trait = "0.1"
+
+# Parking lot for better mutex performance
+parking_lot = "0.12"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"
+
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]

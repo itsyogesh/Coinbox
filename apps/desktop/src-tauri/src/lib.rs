@@ -1,6 +1,7 @@
 mod commands;
 mod db;
 mod error;
+mod wallet;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -32,13 +33,28 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Settings commands
             commands::get_settings,
             commands::save_settings,
+            // Legacy wallet commands (to be deprecated)
             commands::get_wallets,
             commands::add_wallet,
             commands::remove_wallet,
             commands::get_transactions,
+            // Health check
             commands::health_check,
+            // Wallet core commands (new)
+            commands::get_supported_chains,
+            commands::get_mainnet_chains,
+            commands::validate_chain_address,
+            commands::generate_mnemonic,
+            commands::validate_mnemonic,
+            commands::create_hd_wallet,
+            commands::import_hd_wallet,
+            commands::derive_wallet_address,
+            commands::is_wallet_unlocked,
+            commands::lock_wallet,
+            commands::unlock_wallet,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

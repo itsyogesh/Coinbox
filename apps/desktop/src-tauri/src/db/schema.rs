@@ -37,21 +37,26 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
 
     conn.execute_batch(
         r#"
-        -- Settings table
+        -- =======================================================================
+        -- Settings
+        -- =======================================================================
+
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
-        -- Insert default settings
         INSERT OR IGNORE INTO settings (key, value) VALUES
             ('theme', '"system"'),
             ('currency', '"USD"'),
             ('tax_jurisdiction', '"US"'),
             ('cost_basis_method', '"FIFO"');
 
-        -- Wallets table
+        -- =======================================================================
+        -- Legacy Wallets (for backwards compatibility - will be deprecated)
+        -- =======================================================================
+
         CREATE TABLE IF NOT EXISTS wallets (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
@@ -63,7 +68,48 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             UNIQUE(chain, address)
         );
 
-        -- Transactions table
+        -- =======================================================================
+        -- HD Wallets (master wallet info - secrets stored in Stronghold)
+        -- =======================================================================
+
+        CREATE TABLE IF NOT EXISTS hd_wallets (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            wallet_type TEXT NOT NULL,          -- 'hd', 'private_key', 'watch_only'
+            fingerprint TEXT,                   -- Master key fingerprint for HD wallets
+            supported_families TEXT,            -- JSON: ["secp256k1", "ed25519"]
+            has_backup_verified INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        -- =======================================================================
+        -- Wallet Addresses (derived addresses across chains)
+        -- =======================================================================
+
+        CREATE TABLE IF NOT EXISTS wallet_addresses (
+            id TEXT PRIMARY KEY,
+            wallet_id TEXT NOT NULL,
+            chain TEXT NOT NULL,                -- "bitcoin", "ethereum", "solana", etc.
+            chain_family TEXT NOT NULL,         -- "secp256k1", "ed25519"
+            address TEXT NOT NULL,
+            derivation_path TEXT,               -- e.g., "m/44'/60'/0'/0/0"
+            account_index INTEGER NOT NULL DEFAULT 0,
+            address_index INTEGER NOT NULL DEFAULT 0,
+            is_primary INTEGER NOT NULL DEFAULT 1,
+            label TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY (wallet_id) REFERENCES hd_wallets(id) ON DELETE CASCADE,
+            UNIQUE(chain, address)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_wallet_addresses_wallet ON wallet_addresses(wallet_id);
+        CREATE INDEX IF NOT EXISTS idx_wallet_addresses_chain ON wallet_addresses(chain);
+
+        -- =======================================================================
+        -- Transactions
+        -- =======================================================================
+
         CREATE TABLE IF NOT EXISTS transactions (
             id TEXT PRIMARY KEY,
             wallet_id TEXT NOT NULL,
@@ -71,49 +117,36 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             tx_hash TEXT NOT NULL,
             block_number INTEGER,
             timestamp TEXT NOT NULL,
-
-            -- Transaction type
             tx_type TEXT NOT NULL,
-
-            -- Amounts (stored as TEXT to preserve precision)
             amount TEXT NOT NULL,
             fee TEXT,
-
-            -- Asset info
             asset_symbol TEXT NOT NULL,
             asset_contract TEXT,
-
-            -- Addresses
             from_address TEXT NOT NULL,
             to_address TEXT,
-
-            -- Categorization
             category TEXT,
             category_confidence REAL,
             user_category TEXT,
             notes TEXT,
-
-            -- Tax info
             cost_basis TEXT,
             gain_loss TEXT,
             is_taxable INTEGER,
-
-            -- Metadata
             raw_data TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-
             FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
             UNIQUE(chain, tx_hash)
         );
 
-        -- Create indexes for common queries
         CREATE INDEX IF NOT EXISTS idx_transactions_wallet ON transactions(wallet_id);
         CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp);
         CREATE INDEX IF NOT EXISTS idx_transactions_chain ON transactions(chain);
         CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category);
 
-        -- Price cache table
+        -- =======================================================================
+        -- Price Cache
+        -- =======================================================================
+
         CREATE TABLE IF NOT EXISTS price_cache (
             asset_id TEXT NOT NULL,
             currency TEXT NOT NULL,
@@ -123,7 +156,10 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             PRIMARY KEY (asset_id, currency, timestamp)
         );
 
-        -- Tax lots for cost basis tracking
+        -- =======================================================================
+        -- Tax Lots (for cost basis tracking)
+        -- =======================================================================
+
         CREATE TABLE IF NOT EXISTS tax_lots (
             id TEXT PRIMARY KEY,
             wallet_id TEXT NOT NULL,
