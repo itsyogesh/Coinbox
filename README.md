@@ -25,29 +25,28 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 
 ## Current Status
 
-### Sprint 1: Foundation ✅ COMPLETE
+### Sprint 1-2: Foundation ✅ COMPLETE
 
-| Task | Status |
-|------|--------|
-| Tauri 2.0 + React + Vite + TypeScript setup | ✅ Done |
-| Tailwind CSS + shadcn/ui components | ✅ Done |
-| App shell with sidebar navigation | ✅ Done |
-| Placeholder pages (Dashboard, Wallets, Transactions, Tax, Settings) | ✅ Done |
-| SQLite database with SQLCipher encryption | ✅ Done |
-| Database schema with migrations | ✅ Done |
-| Framer Motion animations | ✅ Done |
-| Design skills (frontend-design, coinbox-brand) | ✅ Done |
-| Brand system (Geist font, Indigo primary color) | ✅ Done |
+| Task | Status | Issue |
+|------|--------|-------|
+| Tauri 2.0 + React + Vite + TypeScript setup | ✅ Done | [#6](https://github.com/itsyogesh/Coinbox/issues/6) |
+| Tailwind CSS + shadcn/ui components | ✅ Done | [#7](https://github.com/itsyogesh/Coinbox/issues/7) |
+| App shell with sidebar navigation | ✅ Done | [#4](https://github.com/itsyogesh/Coinbox/issues/4) |
+| Premium UI redesign (Sora/Inter/JetBrains fonts, violet brand) | ✅ Done | [#3](https://github.com/itsyogesh/Coinbox/issues/3) |
+| SQLite database with SQLCipher encryption | ✅ Done | [#5](https://github.com/itsyogesh/Coinbox/issues/5) |
+| Settings page (theme toggle, currency, API keys) | ✅ Done | [#8](https://github.com/itsyogesh/Coinbox/issues/8) |
+| Framer Motion animations | ✅ Done | — |
+| All pages: Dashboard, Wallets, Transactions, Tax, Settings | ✅ Done | — |
 
-### Up Next: Sprint 2 - Wallet Core
+### Up Next: Sprint 3-4 - Wallet Core ([Epic #9](https://github.com/itsyogesh/Coinbox/issues/9))
 
-| Task | Status |
-|------|--------|
-| HD wallet generation (BIP39/BIP44) | ⏳ Pending |
-| Mnemonic import/export | ⏳ Pending |
-| Watch-only address import | ⏳ Pending |
-| Encrypted key storage | ⏳ Pending |
-| Wallet management UI | ⏳ Pending |
+| Task | Status | Issue |
+|------|--------|-------|
+| HD wallet generation (BIP39/BIP44) | ⏳ Pending | [#10](https://github.com/itsyogesh/Coinbox/issues/10) |
+| Encrypted storage (keyring + AES-GCM) | ⏳ Pending | [#11](https://github.com/itsyogesh/Coinbox/issues/11) |
+| Wallet management UI | ⏳ Pending | [#12](https://github.com/itsyogesh/Coinbox/issues/12) |
+| Mnemonic import/export | ⏳ Pending | [#13](https://github.com/itsyogesh/Coinbox/issues/13) |
+| Watch-only address import | ⏳ Pending | [#14](https://github.com/itsyogesh/Coinbox/issues/14) |
 
 ---
 
@@ -179,19 +178,19 @@ Coinbox/
 
 ### Brand Colors
 
-| Color | Light | Dark | Usage |
-|-------|-------|------|-------|
-| **Primary (Indigo)** | `#6366F1` | `#818CF8` | CTAs, active states |
-| **Accent (Teal)** | `#2DD4BF` | `#14B8A6` | Highlights, secondary CTAs |
-| **Success** | `#22C55E` | `#4ADE80` | Positive gains |
-| **Destructive** | `#EF4444` | `#F87171` | Losses, errors |
-| **Warning** | `#F59E0B` | `#FBBF24` | Uncategorized, attention |
+| Color | Value | Usage |
+|-------|-------|-------|
+| **Primary (Violet)** | `#A78BFA` → `#7C3AED` | CTAs, active states, brand accent |
+| **Accent (Teal)** | `#2DD4BF` | Highlights, secondary CTAs |
+| **Success** | `#10B981` | Positive gains, confirmations |
+| **Destructive** | `#EF4444` | Losses, errors, warnings |
+| **Background** | `#0f0e17` | Deep layered dark theme |
 
 ### Typography
 
-- **Headings**: Geist (with Plus Jakarta Sans fallback)
-- **Body**: Geist
-- **Monospace**: Geist Mono (for addresses, numbers)
+- **Headings**: Sora (geometric, modern)
+- **Body**: Inter (clean, readable)
+- **Numbers/Mono**: JetBrains Mono (for addresses, amounts, tabular data)
 
 ### Chain Colors
 
@@ -337,5 +336,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-*Last Updated: December 2024*
+*Last Updated: January 2026*
 *Version: 2.0.0-alpha*
