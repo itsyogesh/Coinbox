@@ -160,7 +160,7 @@ export default function SettingsPage() {
               Choose how values are displayed
             </p>
             <div className="grid grid-cols-4 gap-3">
-              {currencies.map(({ value, label, symbol }) => (
+              {currencies.map(({ value, symbol }) => (
                 <button
                   key={value}
                   onClick={() => setCurrency(value)}

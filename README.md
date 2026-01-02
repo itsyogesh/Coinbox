@@ -129,16 +129,19 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 ```bash
 # Clone the repository
 git clone https://github.com/itsyogesh/Coinbox
-cd Coinbox/desktop
+cd Coinbox
 
-# Install dependencies
-npm install
+# Install dependencies (requires pnpm)
+pnpm install
 
 # Run in development mode
-npm run tauri:dev
+pnpm tauri:dev
 
 # Build for production
-npm run tauri:build
+pnpm tauri:build
+
+# Type check all packages
+pnpm typecheck
 ```
 
 ---
@@ -146,28 +149,32 @@ npm run tauri:build
 ## Project Structure
 
 ```
-Coinbox/
+coinbox/                         # pnpm workspace root
+├── apps/
+│   ├── desktop/                 # Tauri desktop app (@coinbox/desktop)
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   ├── layout/     # AppLayout, navigation
+│   │   │   │   └── ui/         # shadcn/ui components
+│   │   │   ├── hooks/          # Custom React hooks
+│   │   │   ├── lib/            # Utilities, animations
+│   │   │   ├── pages/          # Page components
+│   │   │   └── stores/         # Zustand stores (future)
+│   │   ├── src-tauri/
+│   │   │   └── src/
+│   │   │       ├── commands/   # Tauri IPC commands
+│   │   │       ├── db/         # SQLite database
+│   │   │       └── error.rs    # Error handling
+│   │   └── package.json
+│   └── mobile/                  # Future: React Native or Tauri Mobile
+├── packages/
+│   └── core/                    # Shared types & business logic (@coinbox/core)
+│       └── src/
+│           └── types/           # Chain, Wallet, Transaction, Tax types
 ├── .claude/
-│   └── skills/
-│       ├── frontend-design/     # UI design guidelines
-│       └── coinbox-brand/       # Brand system & colors
-├── desktop/                     # Tauri desktop app
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── layout/         # AppLayout, navigation
-│   │   │   └── ui/             # shadcn/ui components
-│   │   ├── hooks/              # Custom React hooks
-│   │   ├── lib/                # Utilities, animations
-│   │   ├── pages/              # Page components
-│   │   └── stores/             # Zustand stores (future)
-│   ├── src-tauri/
-│   │   └── src/
-│   │       ├── commands/       # Tauri IPC commands
-│   │       ├── db/             # SQLite database
-│   │       └── error.rs        # Error handling
-│   ├── package.json
-│   └── tauri.conf.json
-├── unified-data-model/          # Chain-agnostic data types
+│   └── skills/                  # AI design guidelines
+├── pnpm-workspace.yaml
+├── tsconfig.base.json           # Shared TypeScript config
 ├── MODERNIZATION_PLAN.md        # Detailed technical plan
 └── README.md                    # This file (live product doc)
 ```

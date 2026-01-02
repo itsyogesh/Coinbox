@@ -1,0 +1,30 @@
+{
+  "name": "coinbox",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Portfolio Intelligence, Not Just Tracking",
+  "scripts": {
+    "dev": "pnpm --filter @coinbox/desktop dev",
+    "build": "pnpm --filter @coinbox/desktop build",
+    "tauri:dev": "pnpm --filter @coinbox/desktop tauri:dev",
+    "tauri:build": "pnpm --filter @coinbox/desktop tauri:build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r clean"
+  },
+  "keywords": [
+    "cryptocurrency",
+    "portfolio",
+    "bitcoin",
+    "ethereum",
+    "tax",
+    "wallet"
+  ],
+  "author": "Yogesh",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

@@ -132,24 +132,28 @@ import { pageTransition, cardHover, staggerContainer, staggerItem } from "@/lib/
 ## Directory Structure
 
 ```
-desktop/
-├── src/
-│   ├── components/
-│   │   ├── layout/        # AppLayout, navigation
-│   │   └── ui/            # Reusable UI components (Button, Card, etc.)
-│   ├── hooks/             # Custom React hooks
-│   ├── lib/               # Utilities
-│   │   ├── animations.ts  # Framer Motion presets
-│   │   └── utils.ts       # cn() and other utilities
-│   ├── pages/             # Page components (DashboardPage, etc.)
-│   └── stores/            # Zustand stores (future)
-├── src-tauri/
-│   └── src/
-│       ├── commands/      # Tauri IPC commands
-│       ├── db/            # Database (mod.rs, schema.rs)
-│       ├── error.rs       # Error types
-│       ├── lib.rs         # Library root
-│       └── main.rs        # Entry point
+coinbox/                        # pnpm workspace root
+├── apps/
+│   └── desktop/                # @coinbox/desktop - Tauri app
+│       ├── src/
+│       │   ├── components/
+│       │   │   ├── layout/    # AppLayout, navigation
+│       │   │   └── ui/        # Reusable UI components
+│       │   ├── hooks/         # Custom React hooks
+│       │   ├── lib/           # Utilities, animations
+│       │   ├── pages/         # Page components
+│       │   └── stores/        # Zustand stores (future)
+│       └── src-tauri/
+│           └── src/
+│               ├── commands/  # Tauri IPC commands
+│               ├── db/        # Database (mod.rs, schema.rs)
+│               └── lib.rs     # Library root
+├── packages/
+│   └── core/                   # @coinbox/core - Shared types & logic
+│       └── src/
+│           └── types/         # Chain, Wallet, Transaction, Tax types
+├── pnpm-workspace.yaml
+└── tsconfig.base.json
 ```
 
 ---
