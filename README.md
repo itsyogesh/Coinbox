@@ -38,15 +38,31 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 | Framer Motion animations | ✅ Done | — |
 | All pages: Dashboard, Wallets, Transactions, Tax, Settings | ✅ Done | — |
 
-### Up Next: Sprint 3-4 - Wallet Core ([Epic #9](https://github.com/itsyogesh/Coinbox/issues/9))
+### Sprint 3-4: Wallet Core ✅ COMPLETE
 
 | Task | Status | Issue |
 |------|--------|-------|
-| HD wallet generation (BIP39/BIP44) | ⏳ Pending | [#10](https://github.com/itsyogesh/Coinbox/issues/10) |
-| Encrypted storage (keyring + AES-GCM) | ⏳ Pending | [#11](https://github.com/itsyogesh/Coinbox/issues/11) |
-| Wallet management UI | ⏳ Pending | [#12](https://github.com/itsyogesh/Coinbox/issues/12) |
-| Mnemonic import/export | ⏳ Pending | [#13](https://github.com/itsyogesh/Coinbox/issues/13) |
-| Watch-only address import | ⏳ Pending | [#14](https://github.com/itsyogesh/Coinbox/issues/14) |
+| HD wallet generation (BIP39/BIP44) | ✅ Done | [#10](https://github.com/itsyogesh/Coinbox/issues/10) |
+| Encrypted storage (Stronghold + Argon2) | ✅ Done | [#11](https://github.com/itsyogesh/Coinbox/issues/11) |
+| Wallet management UI | ✅ Done | [#12](https://github.com/itsyogesh/Coinbox/issues/12) |
+| Mnemonic import/export + download backup | ✅ Done | [#13](https://github.com/itsyogesh/Coinbox/issues/13) |
+| Watch-only address import | ✅ Done | [#14](https://github.com/itsyogesh/Coinbox/issues/14) |
+
+**Architecture highlights:**
+- Extensible `ChainModule` trait for multi-chain support
+- Secp256k1 (BIP32): Bitcoin, Ethereum, Arbitrum, Optimism, Base, Polygon
+- Ed25519 (SLIP-0010): Solana
+- 95 Rust tests passing
+
+### Up Next: Sprint 5-6 - Bitcoin Integration ([Epic #15](https://github.com/itsyogesh/Coinbox/issues/15))
+
+| Task | Status | Issue |
+|------|--------|-------|
+| BDK adapter implementation | ⏳ Pending | [#17](https://github.com/itsyogesh/Coinbox/issues/17) |
+| Electrum/Esplora sync | ⏳ Pending | [#19](https://github.com/itsyogesh/Coinbox/issues/19) |
+| Bitcoin balance fetching | ⏳ Pending | [#18](https://github.com/itsyogesh/Coinbox/issues/18) |
+| Bitcoin transaction history | ⏳ Pending | [#16](https://github.com/itsyogesh/Coinbox/issues/16) |
+| Send Bitcoin transaction | ⏳ Pending | [#20](https://github.com/itsyogesh/Coinbox/issues/20) |
 
 ---
 
@@ -222,14 +238,15 @@ coinbox/                         # pnpm workspace root
 - [x] Design system (Tailwind, shadcn/ui, Framer Motion)
 - [x] Brand guidelines and skills
 
-### Phase 2: Wallet Core (Current)
-- [ ] HD wallet generation (BIP39/BIP44)
-- [ ] Mnemonic import/export
-- [ ] Watch-only address import
-- [ ] Encrypted storage (keyring + AES-GCM)
-- [ ] Wallet management UI
+### Phase 2: Wallet Core ✅
+- [x] HD wallet generation (BIP39/BIP44/SLIP-0010)
+- [x] Mnemonic import/export with download backup
+- [x] Watch-only address import with validation
+- [x] Encrypted storage (Stronghold + Argon2)
+- [x] Wallet management UI (create, import, details, delete)
+- [x] Multi-chain support (Bitcoin, Ethereum, L2s, Solana)
 
-### Phase 3: Bitcoin Integration
+### Phase 3: Bitcoin Integration (Current)
 - [ ] BDK adapter implementation
 - [ ] Electrum/Esplora sync
 - [ ] Balance fetching
