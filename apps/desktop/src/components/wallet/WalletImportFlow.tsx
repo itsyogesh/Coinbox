@@ -1,12 +1,11 @@
 /**
- * WalletCreationFlow - Multi-step wizard for HD wallet creation
+ * WalletImportFlow - Multi-step wizard for importing existing HD wallet
  *
  * Steps:
- * 1. Select chains to support
- * 2. Set wallet name and password
- * 3. Display mnemonic for backup
- * 4. Verify mnemonic backup
- * 5. Success with derived addresses
+ * 1. Enter mnemonic phrase
+ * 2. Select chains to derive
+ * 3. Set wallet name and password
+ * 4. Success with derived addresses
  */
 
 import { useEffect, useState, useMemo } from "react";
@@ -16,14 +15,12 @@ import {
   ArrowRight,
   Check,
   Copy,
-  Download,
   Eye,
   EyeOff,
   Lock,
   Wallet,
   AlertTriangle,
-  Shield,
-  Sparkles,
+  Download,
   Bitcoin,
   Hexagon,
   Circle,
@@ -41,10 +38,29 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { copyToClipboard, truncateAddress } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import {
-  useWalletStore,
-  type WalletCreationStep,
-} from "@/stores/walletStore";
+import { useWalletStore } from "@/stores/walletStore";
+import { validateMnemonic } from "@/lib/tauri/wallet";
+
+// =============================================================================
+// Types
+// =============================================================================
+
+type ImportStep = "enter-mnemonic" | "select-chains" | "set-password" | "success";
+
+interface ImportedAddress {
+  chain: string;
+  address: string;
+}
+
+interface ImportState {
+  step: ImportStep;
+  mnemonic: string;
+  selectedChains: string[];
+  walletName: string;
+  password: string;
+  derivedAddresses: ImportedAddress[];
+  error: string | null;
+}
 
 // =============================================================================
 // Animation Variants
@@ -94,10 +110,24 @@ const chainIcons: Record<string, React.ReactNode> = {
 };
 
 // =============================================================================
+// Initial State
+// =============================================================================
+
+const initialState: ImportState = {
+  step: "enter-mnemonic",
+  mnemonic: "",
+  selectedChains: [],
+  walletName: "",
+  password: "",
+  derivedAddresses: [],
+  error: null,
+};
+
+// =============================================================================
 // Props
 // =============================================================================
 
-interface WalletCreationFlowProps {
+interface WalletImportFlowProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -106,31 +136,24 @@ interface WalletCreationFlowProps {
 // Component
 // =============================================================================
 
-export function WalletCreationFlow({
+export function WalletImportFlow({
   open,
   onOpenChange,
-}: WalletCreationFlowProps) {
+}: WalletImportFlowProps) {
   const { toast } = useToast();
   const [direction, setDirection] = useState(1);
+  const [state, setState] = useState<ImportState>(initialState);
   const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [verificationWords, setVerificationWords] = useState<Record<number, string>>({});
-  const [verificationIndices, setVerificationIndices] = useState<number[]>([]);
+  const [isValidating, setIsValidating] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [mnemonicValid, setMnemonicValid] = useState<boolean | null>(null);
 
   const {
     mainnetChains,
     chainsLoaded,
     loadChains,
-    creation,
-    isCreating,
-    setCreationStep,
-    setWalletName,
-    toggleChainSelection,
-    setPassword,
-    createWallet,
-    verifyMnemonicWord,
-    confirmMnemonicBackup,
-    resetCreation,
+    importWallet,
   } = useWalletStore();
 
   // Load chains on mount
@@ -140,173 +163,146 @@ export function WalletCreationFlow({
     }
   }, [chainsLoaded, loadChains]);
 
-  // Generate random verification indices when mnemonic is shown
+  // Validate mnemonic when it changes
   useEffect(() => {
-    if (creation.step === "show-mnemonic" && creation.mnemonic) {
-      const words = creation.mnemonic.split(" ");
-      const indices: number[] = [];
-      while (indices.length < 3) {
-        const idx = Math.floor(Math.random() * words.length);
-        if (!indices.includes(idx)) {
-          indices.push(idx);
+    const words = state.mnemonic.trim().split(/\s+/);
+    if (words.length >= 12) {
+      const timer = setTimeout(async () => {
+        setIsValidating(true);
+        try {
+          const response = await validateMnemonic(state.mnemonic.trim());
+          setMnemonicValid(response.is_valid);
+        } catch {
+          setMnemonicValid(false);
         }
-      }
-      setVerificationIndices(indices.sort((a, b) => a - b));
-      setVerificationWords({});
+        setIsValidating(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setMnemonicValid(null);
     }
-  }, [creation.step, creation.mnemonic]);
+  }, [state.mnemonic]);
 
   const mnemonicWords = useMemo(
-    () => creation.mnemonic?.split(" ") || [],
-    [creation.mnemonic]
+    () => state.mnemonic.trim().split(/\s+/).filter(Boolean),
+    [state.mnemonic]
   );
 
-  const passwordsMatch = creation.password === confirmPassword;
-  const passwordValid = creation.password.length >= 8;
+  const passwordsMatch = state.password === confirmPassword;
+  const passwordValid = state.password.length >= 8;
 
   const canProceed = useMemo(() => {
-    switch (creation.step) {
+    switch (state.step) {
+      case "enter-mnemonic":
+        return mnemonicValid === true;
       case "select-chains":
-        return creation.selectedChains.length > 0;
+        return state.selectedChains.length > 0;
       case "set-password":
         return (
-          creation.walletName.trim().length > 0 &&
+          state.walletName.trim().length > 0 &&
           passwordValid &&
           passwordsMatch
-        );
-      case "verify-mnemonic":
-        return verificationIndices.every(
-          (idx) => verifyMnemonicWord(idx, verificationWords[idx] || "")
         );
       default:
         return true;
     }
   }, [
-    creation.step,
-    creation.selectedChains,
-    creation.walletName,
+    state.step,
+    state.selectedChains,
+    state.walletName,
+    mnemonicValid,
     passwordValid,
     passwordsMatch,
-    verificationIndices,
-    verificationWords,
-    verifyMnemonicWord,
   ]);
 
   const handleNext = async () => {
     setDirection(1);
-    switch (creation.step) {
+    switch (state.step) {
+      case "enter-mnemonic":
+        setState((s) => ({ ...s, step: "select-chains" }));
+        break;
       case "select-chains":
-        setCreationStep("set-password");
+        setState((s) => ({ ...s, step: "set-password" }));
         break;
       case "set-password":
+        setIsImporting(true);
         try {
-          await createWallet();
-        } catch {
+          await importWallet(
+            state.walletName.trim(),
+            state.mnemonic.trim(),
+            state.selectedChains,
+            state.password
+          );
+          // Get derived addresses from store
+          const { wallets } = useWalletStore.getState();
+          const lastWallet = wallets[wallets.length - 1];
+          setState((s) => ({
+            ...s,
+            step: "success",
+            derivedAddresses: lastWallet?.addresses.map((a) => ({
+              chain: a.chain,
+              address: a.address,
+            })) || [],
+          }));
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to import wallet";
           toast({
-            title: "Failed to create wallet",
-            description: creation.error || "An error occurred",
+            title: "Import Failed",
+            description: errorMessage,
             variant: "destructive",
           });
         }
-        break;
-      case "show-mnemonic":
-        setCreationStep("verify-mnemonic");
-        break;
-      case "verify-mnemonic":
-        confirmMnemonicBackup();
+        setIsImporting(false);
         break;
       case "success":
-        onOpenChange(false);
-        resetCreation();
+        handleClose();
         break;
     }
   };
 
   const handleBack = () => {
     setDirection(-1);
-    switch (creation.step) {
+    switch (state.step) {
+      case "select-chains":
+        setState((s) => ({ ...s, step: "enter-mnemonic" }));
+        break;
       case "set-password":
-        setCreationStep("select-chains");
-        break;
-      case "verify-mnemonic":
-        setCreationStep("show-mnemonic");
+        setState((s) => ({ ...s, step: "select-chains" }));
         break;
     }
   };
 
-  const handleCopyMnemonic = async () => {
-    if (creation.mnemonic) {
-      const success = await copyToClipboard(creation.mnemonic);
-      toast({
-        title: success ? "Copied!" : "Failed to copy",
-        description: success
-          ? "Mnemonic copied to clipboard. Clear it after writing down!"
-          : "Could not copy to clipboard",
-        variant: success ? "default" : "destructive",
-      });
-    }
-  };
-
-  const handleDownloadMnemonic = () => {
-    if (!creation.mnemonic) return;
-
-    const walletName = creation.walletName || "wallet";
-    const timestamp = new Date().toISOString().slice(0, 10);
-    const filename = `${walletName.toLowerCase().replace(/\s+/g, "-")}-backup-${timestamp}.txt`;
-
-    const content = `COINBOX WALLET BACKUP
-=====================
-Wallet Name: ${creation.walletName}
-Created: ${new Date().toLocaleString()}
-
-⚠️ IMPORTANT: Keep this file secure and private!
-Anyone with these words can access your wallet.
-
-RECOVERY PHRASE (12 words):
-${creation.mnemonic.split(" ").map((word, i) => `${(i + 1).toString().padStart(2, " ")}. ${word}`).join("\n")}
-
-=====================
-Store this backup in a secure location.
-Delete this file after writing down the words.`;
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({
-      title: "Backup Downloaded",
-      description: "Delete the file after writing down your recovery phrase!",
-    });
+  const toggleChain = (chainId: string) => {
+    setState((s) => ({
+      ...s,
+      selectedChains: s.selectedChains.includes(chainId)
+        ? s.selectedChains.filter((id) => id !== chainId)
+        : [...s.selectedChains, chainId],
+    }));
   };
 
   const handleClose = () => {
     onOpenChange(false);
-    // Delay reset to allow animation
-    setTimeout(resetCreation, 200);
+    setTimeout(() => {
+      setState(initialState);
+      setConfirmPassword("");
+      setMnemonicValid(null);
+    }, 200);
   };
 
-  const stepOrder: WalletCreationStep[] = [
+  const stepOrder: ImportStep[] = [
+    "enter-mnemonic",
     "select-chains",
     "set-password",
-    "show-mnemonic",
-    "verify-mnemonic",
     "success",
   ];
-  const currentStepIndex = stepOrder.indexOf(creation.step);
-  const showBackButton = ["set-password", "verify-mnemonic"].includes(creation.step);
+  const currentStepIndex = stepOrder.indexOf(state.step);
+  const showBackButton = ["select-chains", "set-password"].includes(state.step);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        className="sm:max-w-xl overflow-hidden"
-        showClose={creation.step !== "show-mnemonic"}
-      >
+      <DialogContent className="sm:max-w-xl overflow-hidden">
         {/* Progress indicator */}
         <div className="flex gap-1.5 mb-2">
           {stepOrder.slice(0, -1).map((_, idx) => (
@@ -322,7 +318,7 @@ Delete this file after writing down the words.`;
 
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
-            key={creation.step}
+            key={state.step}
             custom={direction}
             variants={stepVariants}
             initial="enter"
@@ -330,16 +326,75 @@ Delete this file after writing down the words.`;
             exit="exit"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
-            {/* Step: Select Chains */}
-            {creation.step === "select-chains" && (
+            {/* Step: Enter Mnemonic */}
+            {state.step === "enter-mnemonic" && (
               <div className="space-y-6">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <Download className="h-5 w-5 text-primary" />
+                    Import Wallet
+                  </DialogTitle>
+                  <DialogDescription>
+                    Enter your 12 or 24 word recovery phrase to import your wallet.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Recovery Phrase</label>
+                    <textarea
+                      className={cn(
+                        "w-full min-h-[120px] p-3 rounded-lg border bg-background font-mono text-sm resize-none",
+                        "focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+                        mnemonicValid === true && "border-success",
+                        mnemonicValid === false && "border-destructive"
+                      )}
+                      placeholder="Enter your recovery phrase, with words separated by spaces..."
+                      value={state.mnemonic}
+                      onChange={(e) =>
+                        setState((s) => ({ ...s, mnemonic: e.target.value }))
+                      }
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Words: {mnemonicWords.length}
+                      </span>
+                      {isValidating && (
+                        <span className="text-muted-foreground">Validating...</span>
+                      )}
+                      {mnemonicValid === true && (
+                        <span className="text-success flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Valid phrase
+                        </span>
+                      )}
+                      {mnemonicValid === false && (
+                        <span className="text-destructive">Invalid phrase</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+                  <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <p className="text-sm text-muted-foreground">
+                    Make sure you're in a private place. Never share your recovery
+                    phrase with anyone.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Step: Select Chains */}
+            {state.step === "select-chains" && (
+              <div className="space-y-6">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Wallet className="h-5 w-5 text-primary" />
                     Select Chains
                   </DialogTitle>
                   <DialogDescription>
-                    Choose which blockchain networks you want to use. You can add more later.
+                    Choose which blockchain networks to derive addresses for.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -351,10 +406,10 @@ Delete this file after writing down the words.`;
                       variants={itemVariants}
                       initial="hidden"
                       animate="visible"
-                      onClick={() => toggleChainSelection(chain.id)}
+                      onClick={() => toggleChain(chain.id)}
                       className={cn(
                         "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
-                        creation.selectedChains.includes(chain.id)
+                        state.selectedChains.includes(chain.id)
                           ? "border-primary bg-primary/5"
                           : "border-border hover:border-primary/50"
                       )}
@@ -370,7 +425,7 @@ Delete this file after writing down the words.`;
                           {chain.symbol}
                         </div>
                       </div>
-                      {creation.selectedChains.includes(chain.id) && (
+                      {state.selectedChains.includes(chain.id) && (
                         <Check className="h-5 w-5 text-primary shrink-0" />
                       )}
                     </motion.button>
@@ -378,14 +433,14 @@ Delete this file after writing down the words.`;
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Selected: {creation.selectedChains.length} chain
-                  {creation.selectedChains.length !== 1 ? "s" : ""}
+                  Selected: {state.selectedChains.length} chain
+                  {state.selectedChains.length !== 1 ? "s" : ""}
                 </p>
               </div>
             )}
 
             {/* Step: Set Password */}
-            {creation.step === "set-password" && (
+            {state.step === "set-password" && (
               <div className="space-y-6">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
@@ -393,7 +448,7 @@ Delete this file after writing down the words.`;
                     Secure Your Wallet
                   </DialogTitle>
                   <DialogDescription>
-                    Choose a name and strong password to encrypt your wallet.
+                    Choose a name and password to encrypt your imported wallet.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -401,9 +456,11 @@ Delete this file after writing down the words.`;
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Wallet Name</label>
                     <Input
-                      placeholder="My Wallet"
-                      value={creation.walletName}
-                      onChange={(e) => setWalletName(e.target.value)}
+                      placeholder="Imported Wallet"
+                      value={state.walletName}
+                      onChange={(e) =>
+                        setState((s) => ({ ...s, walletName: e.target.value }))
+                      }
                       autoFocus
                     />
                   </div>
@@ -414,8 +471,10 @@ Delete this file after writing down the words.`;
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="At least 8 characters"
-                        value={creation.password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        value={state.password}
+                        onChange={(e) =>
+                          setState((s) => ({ ...s, password: e.target.value }))
+                        }
                         className="pr-10"
                       />
                       <button
@@ -430,7 +489,7 @@ Delete this file after writing down the words.`;
                         )}
                       </button>
                     </div>
-                    {creation.password && !passwordValid && (
+                    {state.password && !passwordValid && (
                       <p className="text-xs text-destructive">
                         Password must be at least 8 characters
                       </p>
@@ -456,124 +515,14 @@ Delete this file after writing down the words.`;
                 <div className="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
                   <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                   <p className="text-sm text-warning">
-                    Make sure to remember your password. It cannot be recovered
-                    if lost.
+                    This password encrypts your wallet on this device. Remember it!
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Step: Show Mnemonic */}
-            {creation.step === "show-mnemonic" && (
-              <div className="space-y-6">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-primary" />
-                    Backup Your Recovery Phrase
-                  </DialogTitle>
-                  <DialogDescription>
-                    Write down these 12 words in order. This is the ONLY way to
-                    recover your wallet.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {mnemonicWords.map((word, idx) => (
-                    <motion.div
-                      key={idx}
-                      custom={idx}
-                      variants={itemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border"
-                    >
-                      <span className="text-xs text-muted-foreground w-5">
-                        {idx + 1}.
-                      </span>
-                      <span className="font-mono text-sm">{word}</span>
-                    </motion.div>
-                  ))}
-                </div>
-
-                <div className="flex justify-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyMnemonic}
-                    className="gap-2"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadMnemonic}
-                    className="gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download Backup
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                    <div className="text-sm text-destructive space-y-1">
-                      <p className="font-medium">Never share these words!</p>
-                      <p className="text-destructive/80">
-                        Anyone with this phrase can access all your funds.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Step: Verify Mnemonic */}
-            {creation.step === "verify-mnemonic" && (
-              <div className="space-y-6">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <Check className="h-5 w-5 text-primary" />
-                    Verify Your Backup
-                  </DialogTitle>
-                  <DialogDescription>
-                    Enter the requested words to confirm you've saved your
-                    recovery phrase.
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-4">
-                  {verificationIndices.map((wordIdx) => (
-                    <div key={wordIdx} className="space-y-2">
-                      <label className="text-sm font-medium">
-                        Word #{wordIdx + 1}
-                      </label>
-                      <Input
-                        placeholder={`Enter word #${wordIdx + 1}`}
-                        value={verificationWords[wordIdx] || ""}
-                        onChange={(e) =>
-                          setVerificationWords((prev) => ({
-                            ...prev,
-                            [wordIdx]: e.target.value,
-                          }))
-                        }
-                        className={cn(
-                          verificationWords[wordIdx] &&
-                            (verifyMnemonicWord(wordIdx, verificationWords[wordIdx])
-                              ? "border-success"
-                              : "border-destructive")
-                        )}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Step: Success */}
-            {creation.step === "success" && (
+            {state.step === "success" && (
               <div className="space-y-6">
                 <div className="text-center space-y-4">
                   <motion.div
@@ -585,15 +534,15 @@ Delete this file after writing down the words.`;
                     <Check className="h-8 w-8 text-success" />
                   </motion.div>
                   <DialogHeader className="text-center">
-                    <DialogTitle>Wallet Created!</DialogTitle>
+                    <DialogTitle>Wallet Imported!</DialogTitle>
                     <DialogDescription>
-                      Your wallet is ready to use. Here are your derived addresses:
+                      Your wallet has been imported. Here are your derived addresses:
                     </DialogDescription>
                   </DialogHeader>
                 </div>
 
                 <div className="space-y-3 max-h-60 overflow-y-auto">
-                  {creation.derivedAddresses.map((addr, idx) => {
+                  {state.derivedAddresses.map((addr, idx) => {
                     const chain = mainnetChains.find((c) => c.id === addr.chain);
                     return (
                       <motion.div
@@ -647,10 +596,10 @@ Delete this file after writing down the words.`;
 
           <Button
             onClick={handleNext}
-            disabled={!canProceed || isCreating}
+            disabled={!canProceed || isImporting}
             className="gap-2"
           >
-            {isCreating ? (
+            {isImporting ? (
               <>
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -658,16 +607,16 @@ Delete this file after writing down the words.`;
                 >
                   <Wallet className="h-4 w-4" />
                 </motion.div>
-                Creating...
+                Importing...
               </>
-            ) : creation.step === "success" ? (
+            ) : state.step === "success" ? (
               <>
                 Done
                 <Check className="h-4 w-4" />
               </>
             ) : (
               <>
-                {creation.step === "set-password" ? "Create Wallet" : "Continue"}
+                {state.step === "set-password" ? "Import Wallet" : "Continue"}
                 <ArrowRight className="h-4 w-4" />
               </>
             )}

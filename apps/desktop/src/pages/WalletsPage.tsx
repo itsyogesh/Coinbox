@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -17,6 +18,8 @@ import { truncateAddress, copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { WalletCreationFlow } from "@/components/wallet/WalletCreationFlow";
+import { WalletImportFlow } from "@/components/wallet/WalletImportFlow";
+import { WatchOnlyFlow } from "@/components/wallet/WatchOnlyFlow";
 import { useWalletStore } from "@/stores/walletStore";
 
 // Animation variants
@@ -66,8 +69,11 @@ const chainColors: Record<string, { text: string; bg: string }> = {
 };
 
 export default function WalletsPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [showWatchDialog, setShowWatchDialog] = useState(false);
 
   const {
     wallets,
@@ -113,27 +119,15 @@ export default function WalletsPage() {
       description: "Import using seed phrase or private key",
       icon: Import,
       accent: "primary",
-      onClick: () => {
-        // TODO: Implement import flow
-        toast({
-          title: "Coming soon",
-          description: "Import wallet functionality will be available soon",
-        });
-      },
+      onClick: () => setShowImportDialog(true),
     },
     {
       id: "watch",
       title: "Watch Address",
       description: "Track any public address without private keys",
       icon: Eye,
-      accent: "muted",
-      onClick: () => {
-        // TODO: Implement watch-only flow
-        toast({
-          title: "Coming soon",
-          description: "Watch-only addresses will be available soon",
-        });
-      },
+      accent: "primary",
+      onClick: () => setShowWatchDialog(true),
     },
     {
       id: "scan",
@@ -181,21 +175,31 @@ export default function WalletsPage() {
           >
             {wallets.map((wallet) => (
               <motion.div key={wallet.id} variants={itemVariants}>
-                <div className="card-premium p-5 group">
+                <button
+                  onClick={() => navigate(`/wallets/${wallet.id}`)}
+                  className="card-premium p-5 group w-full text-left hover:border-primary/50 transition-colors cursor-pointer"
+                >
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Wallet className="h-5 w-5 text-primary" />
+                        {wallet.type === "watch_only" ? (
+                          <Eye className="h-5 w-5 text-primary" />
+                        ) : (
+                          <Wallet className="h-5 w-5 text-primary" />
+                        )}
                       </div>
                       <div>
-                        <h3 className="font-medium">{wallet.name}</h3>
+                        <h3 className="font-medium group-hover:text-primary transition-colors">
+                          {wallet.name}
+                        </h3>
                         <p className="text-xs text-muted-foreground">
                           {wallet.addresses.length} address
                           {wallet.addresses.length !== 1 ? "es" : ""}
+                          {wallet.type === "watch_only" && " • Watch-only"}
                         </p>
                       </div>
                     </div>
-                    {!wallet.hasBackupVerified && (
+                    {!wallet.hasBackupVerified && wallet.type === "hd" && (
                       <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning">
                         Backup pending
                       </span>
@@ -227,17 +231,20 @@ export default function WalletsPage() {
                           <span className="text-xs font-mono flex-1 truncate">
                             {truncateAddress(addr.address, 8, 6)}
                           </span>
-                          <button
-                            onClick={() => handleCopyAddress(addr.address)}
-                            className="p-1 rounded hover:bg-muted transition-colors"
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyAddress(addr.address);
+                            }}
+                            className="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
                           >
                             <Copy className="h-3 w-3 text-muted-foreground" />
-                          </button>
+                          </span>
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                </button>
               </motion.div>
             ))}
           </motion.div>
@@ -354,6 +361,18 @@ export default function WalletsPage() {
       <WalletCreationFlow
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
+      />
+
+      {/* Wallet Import Dialog */}
+      <WalletImportFlow
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+      />
+
+      {/* Watch-Only Dialog */}
+      <WatchOnlyFlow
+        open={showWatchDialog}
+        onOpenChange={setShowWatchDialog}
       />
     </>
   );

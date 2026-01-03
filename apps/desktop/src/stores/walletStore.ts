@@ -40,7 +40,6 @@ export interface WalletAddress {
 }
 
 export type WalletCreationStep =
-  | "select-type"
   | "select-chains"
   | "set-password"
   | "show-mnemonic"
@@ -102,6 +101,9 @@ interface WalletState {
 
   // Import flow actions
   importWallet: (name: string, mnemonic: string, chains: string[], password: string) => Promise<void>;
+
+  // Watch-only actions
+  addWatchOnlyAddress: (name: string, chainId: string, address: string) => void;
 }
 
 // =============================================================================
@@ -109,7 +111,7 @@ interface WalletState {
 // =============================================================================
 
 const initialCreationState: WalletCreationState = {
-  step: "select-type",
+  step: "select-chains",
   walletName: "",
   selectedChains: [],
   password: "",
@@ -152,7 +154,7 @@ export const useWalletStore = create<WalletState>()(
               chainsLoaded: true,
             });
           } catch (error) {
-            console.error("Failed to load chains:", error);
+            console.error("[WalletStore] Failed to load chains:", error);
           }
         },
 
@@ -355,6 +357,33 @@ export const useWalletStore = create<WalletState>()(
             set({ isCreating: false });
             throw error;
           }
+        },
+
+        // Watch-only address
+        addWatchOnlyAddress: (name, chainId, address) => {
+          const chain = useWalletStore.getState().supportedChains.find((c) => c.id === chainId);
+
+          const newWallet: HDWallet = {
+            id: `watch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name,
+            type: "watch_only",
+            hasBackupVerified: true, // Watch-only doesn't need backup
+            createdAt: new Date().toISOString(),
+            addresses: [
+              {
+                chain: chainId,
+                chainFamily: chain?.family || "secp256k1",
+                address,
+                derivationPath: "",
+                isPrimary: true,
+              },
+            ],
+          };
+
+          set((state) => ({
+            wallets: [...state.wallets, newWallet],
+            selectedWalletId: newWallet.id,
+          }));
         },
       }),
       {

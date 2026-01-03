@@ -3,6 +3,7 @@ mod db;
 mod error;
 mod wallet;
 
+use tauri::Manager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub use error::{Error, Result};
@@ -30,6 +31,15 @@ pub fn run() {
                     tracing::error!("Failed to initialize database: {}", e);
                 }
             });
+
+            // Open devtools in debug builds
+            #[cfg(debug_assertions)]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
