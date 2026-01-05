@@ -172,14 +172,14 @@ export function WatchOnlyFlow({ open, onOpenChange }: WatchOnlyFlowProps) {
     }
   }, [state.step, state.selectedChain, addressValid, state.walletName]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setDirection(1);
     switch (state.step) {
       case "select-chain":
         setState((s) => ({ ...s, step: "enter-address" }));
         break;
       case "enter-address":
-        addWatchOnlyAddress(
+        await addWatchOnlyAddress(
           state.walletName.trim(),
           state.selectedChain!,
           state.address.trim()

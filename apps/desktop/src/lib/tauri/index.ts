@@ -5,3 +5,5 @@
  */
 
 export * from "./wallet";
+export * from "./bitcoin";
+export * from "./storeSync";

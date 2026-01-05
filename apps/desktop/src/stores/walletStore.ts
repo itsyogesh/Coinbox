@@ -17,6 +17,7 @@ import {
   lockWallet,
   unlockWallet,
 } from "@/lib/tauri/wallet";
+import { initBitcoinFromCachedSeed, createBitcoinWatchWallet } from "@/lib/tauri/bitcoin";
 
 // =============================================================================
 // Types
@@ -103,7 +104,7 @@ interface WalletState {
   importWallet: (name: string, mnemonic: string, chains: string[], password: string) => Promise<void>;
 
   // Watch-only actions
-  addWatchOnlyAddress: (name: string, chainId: string, address: string) => void;
+  addWatchOnlyAddress: (name: string, chainId: string, address: string) => Promise<void>;
 }
 
 // =============================================================================
@@ -251,6 +252,17 @@ export const useWalletStore = create<WalletState>()(
               12
             );
 
+            // Initialize Bitcoin BDK wallet if Bitcoin is included
+            if (creation.selectedChains.includes("bitcoin")) {
+              try {
+                await initBitcoinFromCachedSeed(response.wallet_id, 0);
+                console.log("[WalletStore] Bitcoin wallet initialized");
+              } catch (btcError) {
+                console.error("[WalletStore] Failed to init Bitcoin wallet:", btcError);
+                // Continue anyway - sync will fail but wallet is still created
+              }
+            }
+
             // Create wallet entry
             const newWallet: HDWallet = {
               id: response.wallet_id,
@@ -330,6 +342,16 @@ export const useWalletStore = create<WalletState>()(
           try {
             const response = await importHDWallet(name, mnemonic, chains, password);
 
+            // Initialize Bitcoin BDK wallet if Bitcoin is included
+            if (chains.includes("bitcoin")) {
+              try {
+                await initBitcoinFromCachedSeed(response.wallet_id, 0);
+                console.log("[WalletStore] Bitcoin wallet initialized");
+              } catch (btcError) {
+                console.error("[WalletStore] Failed to init Bitcoin wallet:", btcError);
+              }
+            }
+
             const newWallet: HDWallet = {
               id: response.wallet_id,
               name,
@@ -360,11 +382,24 @@ export const useWalletStore = create<WalletState>()(
         },
 
         // Watch-only address
-        addWatchOnlyAddress: (name, chainId, address) => {
+        addWatchOnlyAddress: async (name, chainId, address) => {
           const chain = useWalletStore.getState().supportedChains.find((c) => c.id === chainId);
 
+          const walletId = `watch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+          // Initialize BDK wallet for Bitcoin watch-only addresses
+          if (chainId === "bitcoin") {
+            try {
+              await createBitcoinWatchWallet(walletId, address);
+              console.log("[WalletStore] Bitcoin watch wallet initialized");
+            } catch (btcError) {
+              console.error("[WalletStore] Failed to init Bitcoin watch wallet:", btcError);
+              // Still create the wallet entry, sync will just fail
+            }
+          }
+
           const newWallet: HDWallet = {
-            id: `watch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: walletId,
             name,
             type: "watch_only",
             hasBackupVerified: true, // Watch-only doesn't need backup

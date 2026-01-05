@@ -32,6 +32,11 @@ pub fn run() {
                 }
             });
 
+            // Initialize Bitcoin state
+            let data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
+            let bitcoin_state = commands::BitcoinState::new(data_dir);
+            app.manage(bitcoin_state);
+
             // Open devtools in debug builds
             #[cfg(debug_assertions)]
             {
@@ -65,6 +70,38 @@ pub fn run() {
             commands::is_wallet_unlocked,
             commands::lock_wallet,
             commands::unlock_wallet,
+            // Bitcoin commands (Sprint 5-6)
+            commands::bitcoin_create_wallet,
+            commands::bitcoin_create_watch_wallet,
+            commands::bitcoin_init_from_cached_seed,
+            commands::bitcoin_sync_wallet,
+            commands::bitcoin_get_balance,
+            commands::bitcoin_get_transactions,
+            commands::bitcoin_get_utxos,
+            commands::bitcoin_estimate_fee,
+            commands::bitcoin_get_new_address,
+            commands::bitcoin_get_network,
+            commands::bitcoin_wallet_exists,
+            // Bitcoin single-address commands (for watch-only addresses)
+            commands::bitcoin_get_address_balance,
+            commands::bitcoin_get_address_transactions,
+            // Bitcoin transaction commands
+            commands::bitcoin_send_transaction,
+            commands::bitcoin_validate_address,
+            // Store sync commands (SQLite persistence)
+            commands::load_balances,
+            commands::load_wallet_balances,
+            commands::save_balance,
+            commands::delete_wallet_balances,
+            commands::load_prices,
+            commands::load_price,
+            commands::save_price,
+            commands::save_prices,
+            commands::load_cached_transactions,
+            commands::load_all_transactions,
+            commands::save_transaction,
+            commands::save_transactions,
+            commands::delete_wallet_transactions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

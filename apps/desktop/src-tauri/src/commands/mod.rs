@@ -1,3 +1,5 @@
+pub mod bitcoin;
+pub mod store_sync;
 pub mod wallet;
 
 use crate::db::Database;
@@ -7,6 +9,12 @@ use tauri::State;
 
 // Re-export wallet commands
 pub use wallet::*;
+
+// Re-export bitcoin commands and state
+pub use bitcoin::*;
+
+// Re-export store sync commands
+pub use store_sync::*;
 
 // ============================================================================
 // Types

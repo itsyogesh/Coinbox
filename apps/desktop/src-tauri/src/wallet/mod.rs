@@ -33,6 +33,7 @@
 //! └─────────────────────────────────────────────────────────────────┘
 //! ```
 
+pub mod bitcoin;
 pub mod chains;
 pub mod core;
 pub mod error;
@@ -42,6 +43,7 @@ pub mod storage;
 pub mod types;
 
 // Re-export commonly used items
+pub use bitcoin::{BitcoinAdapter, BitcoinBalance, BitcoinConfig, BitcoinNetwork, BitcoinTransaction};
 pub use chains::{BitcoinModule, ChainModule, EthereumModule, SolanaModule};
 pub use error::{WalletError, WalletResult};
 pub use mnemonic::{generate_mnemonic, mnemonic_to_seed, parse_mnemonic, validate_mnemonic, MnemonicLength};

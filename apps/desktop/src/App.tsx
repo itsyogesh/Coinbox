@@ -1,6 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { AppInitializer } from "@/components/AppInitializer";
 import { Toaster } from "@/components/ui/toaster";
 
 // Pages
@@ -13,7 +14,7 @@ import SettingsPage from "@/pages/SettingsPage";
 
 function App() {
   return (
-    <>
+    <AppInitializer>
       <AppLayout>
         <AnimatePresence mode="wait">
           <Routes>
@@ -27,7 +28,7 @@ function App() {
         </AnimatePresence>
       </AppLayout>
       <Toaster />
-    </>
+    </AppInitializer>
   );
 }
 

@@ -13,6 +13,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  ArrowDownLeft,
+  ArrowUpRight,
   Copy,
   Pencil,
   Trash2,
@@ -39,6 +41,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useWalletStore } from "@/stores/walletStore";
+import { useBitcoinStore } from "@/stores/bitcoinStore";
+import { BitcoinBalanceCard, BitcoinTransactionList, ReceiveBitcoinDialog, SendBitcoinDialog } from "@/components/bitcoin";
 
 // Animation variants
 const containerVariants = {
@@ -98,6 +102,13 @@ export default function WalletDetailsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(wallet?.name || "");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showReceiveDialog, setShowReceiveDialog] = useState(false);
+  const [showSendDialog, setShowSendDialog] = useState(false);
+
+  // Get Bitcoin balance for send dialog
+  const { getWalletState } = useBitcoinStore();
+  const btcWalletState = walletId ? getWalletState(walletId) : null;
+  const btcBalance = btcWalletState?.balance?.trusted_spendable ?? 0;
 
   // Load chains on mount
   useEffect(() => {
@@ -332,6 +343,74 @@ export default function WalletDetailsPage() {
             </div>
           </div>
         </motion.section>
+
+        {/* Bitcoin Section - Show if wallet has Bitcoin address */}
+        {wallet.addresses.some((addr) => addr.chain === "bitcoin") && (() => {
+          const btcAddress = wallet.addresses.find((addr) => addr.chain === "bitcoin");
+          // For watch-only single-address wallets, pass the address for direct Electrum queries
+          const addressForSync = wallet.type === "watch_only" ? btcAddress?.address : undefined;
+
+          return (
+            <>
+              <motion.section variants={itemVariants} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-heading font-semibold">Bitcoin</h2>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => setShowReceiveDialog(true)}
+                    >
+                      <ArrowDownLeft className="h-4 w-4" />
+                      Receive
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={wallet.type === "watch_only"}
+                      title={wallet.type === "watch_only" ? "Watch-only wallets cannot send" : "Send Bitcoin"}
+                      onClick={() => setShowSendDialog(true)}
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                      Send
+                    </Button>
+                  </div>
+                </div>
+                <BitcoinBalanceCard walletId={wallet.id} address={addressForSync} />
+              </motion.section>
+
+              <motion.section variants={itemVariants} className="space-y-4">
+                <h2 className="text-lg font-heading font-semibold">Recent Transactions</h2>
+                <div className="card-premium p-4">
+                  <BitcoinTransactionList walletId={wallet.id} limit={5} />
+                </div>
+              </motion.section>
+
+              {/* Receive Bitcoin Dialog */}
+              {btcAddress && (
+                <ReceiveBitcoinDialog
+                  open={showReceiveDialog}
+                  onOpenChange={setShowReceiveDialog}
+                  address={btcAddress.address}
+                  walletName={wallet.name}
+                />
+              )}
+
+              {/* Send Bitcoin Dialog */}
+              {wallet.type !== "watch_only" && (
+                <SendBitcoinDialog
+                  open={showSendDialog}
+                  onOpenChange={setShowSendDialog}
+                  walletId={wallet.id}
+                  walletName={wallet.name}
+                  availableBalance={btcBalance}
+                />
+              )}
+            </>
+          );
+        })()}
 
         {/* Addresses */}
         <motion.section variants={itemVariants} className="space-y-4">

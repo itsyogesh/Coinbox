@@ -134,7 +134,6 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             raw_data TEXT,
             created_at TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
             UNIQUE(chain, tx_hash)
         );
 
@@ -170,13 +169,38 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
             disposed_at TEXT,
             disposed_amount TEXT,
             transaction_id TEXT,
-            created_at TEXT NOT NULL DEFAULT (datetime('now')),
-            FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
-            FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
 
         CREATE INDEX IF NOT EXISTS idx_tax_lots_wallet ON tax_lots(wallet_id);
         CREATE INDEX IF NOT EXISTS idx_tax_lots_asset ON tax_lots(asset_symbol);
+
+        -- =======================================================================
+        -- Balances Cache (unified for all chains)
+        -- =======================================================================
+
+        CREATE TABLE IF NOT EXISTS balances (
+            wallet_id TEXT NOT NULL,
+            chain TEXT NOT NULL,
+            asset TEXT NOT NULL,
+            confirmed TEXT NOT NULL DEFAULT '0',
+            unconfirmed TEXT NOT NULL DEFAULT '0',
+            last_synced TEXT,
+            PRIMARY KEY (wallet_id, chain, asset)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_balances_wallet ON balances(wallet_id);
+        CREATE INDEX IF NOT EXISTS idx_balances_chain ON balances(chain);
+
+        -- =======================================================================
+        -- Prices (latest price per asset)
+        -- =======================================================================
+
+        CREATE TABLE IF NOT EXISTS prices (
+            asset TEXT PRIMARY KEY,
+            price_usd REAL NOT NULL,
+            last_updated TEXT NOT NULL
+        );
 
         -- Record migration
         INSERT INTO migrations (version) VALUES (1);
@@ -185,3 +209,4 @@ fn migrate_v1(conn: &Connection) -> Result<()> {
 
     Ok(())
 }
+

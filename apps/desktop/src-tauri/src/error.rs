@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("Encryption error: {0}")]
     Encryption(String),
+
+    #[error("Bitcoin error: {0}")]
+    Bitcoin(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

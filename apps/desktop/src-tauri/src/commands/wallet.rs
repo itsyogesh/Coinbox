@@ -18,7 +18,7 @@ use crate::wallet::types::{
 static WALLET_MANAGER: OnceLock<WalletManager> = OnceLock::new();
 
 /// Get or initialize the global wallet manager
-fn get_wallet_manager() -> &'static WalletManager {
+pub fn get_wallet_manager() -> &'static WalletManager {
     WALLET_MANAGER.get_or_init(WalletManager::new)
 }
 

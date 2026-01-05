@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -9,8 +11,14 @@ import {
   Plus,
   ArrowRight,
   Sparkles,
+  Bitcoin,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { useWalletStore } from "@/stores/walletStore";
+import { useBitcoinStore } from "@/stores/bitcoinStore";
+import { formatBtc, satsToBtc } from "@/lib/tauri/bitcoin";
 
 // Animation variants
 const containerVariants = {
@@ -38,12 +46,60 @@ const itemVariants = {
 };
 
 export default function DashboardPage() {
-  // Mock data - will be replaced with real data
-  const portfolioValue = 0;
-  const change24h = 0;
-  const changePercent = 0;
-  const walletCount = 0;
-  const transactionCount = 0;
+  const navigate = useNavigate();
+  const { wallets } = useWalletStore();
+  const { getWalletState, fetchPrice, price, walletStates } = useBitcoinStore();
+
+  // Fetch BTC price on mount
+  useEffect(() => {
+    if (!price.btcUsd) {
+      fetchPrice();
+    }
+  }, [price.btcUsd, fetchPrice]);
+
+  // Calculate portfolio values from all Bitcoin wallets
+  const portfolioData = useMemo(() => {
+    let totalSats = 0;
+    let totalTransactions = 0;
+
+    // Get all wallets with Bitcoin addresses
+    const btcWallets = wallets.filter((w) =>
+      w.addresses.some((a) => a.chain === "bitcoin")
+    );
+
+    btcWallets.forEach((wallet) => {
+      const state = getWalletState(wallet.id);
+      if (state.balance) {
+        totalSats += state.balance.confirmed + state.balance.unconfirmed;
+      }
+      totalTransactions += state.transactions.length;
+    });
+
+    const totalBtc = satsToBtc(totalSats);
+    const totalUsd = price.btcUsd ? totalBtc * price.btcUsd : null;
+
+    return {
+      totalSats,
+      totalBtc,
+      totalUsd,
+      btcWalletCount: btcWallets.length,
+      transactionCount: totalTransactions,
+    };
+  }, [wallets, walletStates, price.btcUsd, getWalletState]);
+
+  // Check if any wallet is syncing
+  const isSyncing = useMemo(() => {
+    return wallets.some((w) => {
+      const state = getWalletState(w.id);
+      return state.isSyncing;
+    });
+  }, [wallets, walletStates, getWalletState]);
+
+  const portfolioValue = portfolioData.totalUsd ?? 0;
+  const change24h = 0; // TODO: Implement 24h change tracking
+  const changePercent = 0; // TODO: Implement percentage change
+  const walletCount = wallets.length;
+  const transactionCount = portfolioData.transactionCount;
 
   return (
     <motion.div
@@ -74,6 +130,9 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Wallet className="h-4 w-4" />
                   <span>Total Portfolio Value</span>
+                  {isSyncing && (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -83,6 +142,16 @@ export default function DashboardPage() {
                       maximumFractionDigits: 2,
                     })}
                   </h2>
+
+                  {/* BTC Holdings */}
+                  {portfolioData.totalSats > 0 && (
+                    <div className="flex items-center gap-2 text-lg text-muted-foreground">
+                      <Bitcoin className="h-4 w-4 text-orange-500" />
+                      <span className="font-mono tabular-nums">
+                        {formatBtc(portfolioData.totalSats, 8)} BTC
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-3">
                     <span
@@ -169,10 +238,15 @@ export default function DashboardPage() {
                     Add a wallet to see your performance chart
                   </p>
                 </div>
-                <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/wallets")}
+                  className="gap-2 text-primary hover:text-primary/80"
+                >
                   <Plus className="h-4 w-4" />
                   Add your first wallet
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -183,23 +257,73 @@ export default function DashboardPage() {
           <div className="card-premium p-6 h-full">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-heading font-semibold">Top Assets</h3>
-              <button className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors">
+              <button
+                onClick={() => navigate("/wallets")}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
                 View all
                 <ArrowRight className="h-3 w-3" />
               </button>
             </div>
 
-            {/* Empty state */}
-            <div className="h-[280px] flex flex-col items-center justify-center">
-              <div className="text-center space-y-3">
-                <div className="mx-auto w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                  <Wallet className="h-5 w-5 text-muted-foreground" />
+            {portfolioData.totalSats > 0 ? (
+              <div className="space-y-3">
+                {/* Bitcoin Asset */}
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                  <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                    <Bitcoin className="h-6 w-6 text-orange-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">Bitcoin</span>
+                      <span className="text-xs text-muted-foreground">BTC</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {portfolioData.btcWalletCount} wallet{portfolioData.btcWalletCount !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-mono font-medium tabular-nums">
+                      {formatBtc(portfolioData.totalSats, 8)} BTC
+                    </p>
+                    {portfolioData.totalUsd !== null && (
+                      <p className="text-sm text-muted-foreground tabular-nums">
+                        ${portfolioData.totalUsd.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  No assets to display
-                </p>
+
+                {/* Placeholder for more assets */}
+                <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                  <p>More chains coming soon</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Empty state */
+              <div className="h-[280px] flex flex-col items-center justify-center">
+                <div className="text-center space-y-3">
+                  <div className="mx-auto w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                    <Wallet className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    No assets to display
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/wallets")}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add wallet
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

@@ -54,15 +54,24 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 - Ed25519 (SLIP-0010): Solana
 - 95 Rust tests passing
 
-### Up Next: Sprint 5-6 - Bitcoin Integration ([Epic #15](https://github.com/itsyogesh/Coinbox/issues/15))
+### Sprint 5-6: Bitcoin Integration ✅ COMPLETE ([Epic #15](https://github.com/itsyogesh/Coinbox/issues/15))
 
 | Task | Status | Issue |
 |------|--------|-------|
-| BDK adapter implementation | ⏳ Pending | [#17](https://github.com/itsyogesh/Coinbox/issues/17) |
-| Electrum/Esplora sync | ⏳ Pending | [#19](https://github.com/itsyogesh/Coinbox/issues/19) |
-| Bitcoin balance fetching | ⏳ Pending | [#18](https://github.com/itsyogesh/Coinbox/issues/18) |
-| Bitcoin transaction history | ⏳ Pending | [#16](https://github.com/itsyogesh/Coinbox/issues/16) |
+| BDK adapter implementation | ✅ Done | [#17](https://github.com/itsyogesh/Coinbox/issues/17) |
+| Electrum/Esplora sync | ✅ Done | [#19](https://github.com/itsyogesh/Coinbox/issues/19) |
+| Bitcoin balance fetching | ✅ Done | [#18](https://github.com/itsyogesh/Coinbox/issues/18) |
+| Bitcoin transaction history | ✅ Done | [#16](https://github.com/itsyogesh/Coinbox/issues/16) |
 | Send Bitcoin transaction | ⏳ Pending | [#20](https://github.com/itsyogesh/Coinbox/issues/20) |
+
+**Architecture highlights:**
+- `BitcoinAdapter` with BDK 1.2 + bdk_electrum 0.21
+- Electrum server sync (Blockstream defaults, configurable)
+- Full/watch-only wallet support via descriptors
+- UTXO management and fee estimation
+- Tauri commands + TypeScript bindings
+
+### Up Next: Sprint 7-8 - Ethereum Integration
 
 ---
 
@@ -246,12 +255,14 @@ coinbox/                         # pnpm workspace root
 - [x] Wallet management UI (create, import, details, delete)
 - [x] Multi-chain support (Bitcoin, Ethereum, L2s, Solana)
 
-### Phase 3: Bitcoin Integration (Current)
-- [ ] BDK adapter implementation
-- [ ] Electrum/Esplora sync
-- [ ] Balance fetching
-- [ ] Transaction history
-- [ ] Send/receive flows
+### Phase 3: Bitcoin Integration ✅
+- [x] BDK adapter implementation
+- [x] Electrum/Esplora sync
+- [x] Balance fetching
+- [x] Transaction history
+- [x] Tauri commands + TypeScript bindings
+- [ ] Send Bitcoin transaction
+- [ ] Bitcoin UI components
 
 ### Phase 4: Ethereum Integration
 - [ ] Viem setup + Tauri signing bridge

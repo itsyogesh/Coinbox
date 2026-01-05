@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Circle,
   Copy,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { truncateAddress, copyToClipboard } from "@/lib/utils";
@@ -21,6 +22,8 @@ import { WalletCreationFlow } from "@/components/wallet/WalletCreationFlow";
 import { WalletImportFlow } from "@/components/wallet/WalletImportFlow";
 import { WatchOnlyFlow } from "@/components/wallet/WatchOnlyFlow";
 import { useWalletStore } from "@/stores/walletStore";
+import { useBitcoinStore } from "@/stores/bitcoinStore";
+import { formatBtc } from "@/lib/tauri/bitcoin";
 
 // Animation variants
 const containerVariants = {
@@ -83,12 +86,21 @@ export default function WalletsPage() {
     startCreation,
   } = useWalletStore();
 
+  const { getWalletState, fetchPrice, price } = useBitcoinStore();
+
   // Load chains on mount
   useEffect(() => {
     if (!chainsLoaded) {
       loadChains();
     }
   }, [chainsLoaded, loadChains]);
+
+  // Fetch BTC price on mount
+  useEffect(() => {
+    if (!price.btcUsd) {
+      fetchPrice();
+    }
+  }, [price.btcUsd, fetchPrice]);
 
   const handleOpenCreate = () => {
     startCreation();
@@ -173,80 +185,128 @@ export default function WalletsPage() {
             variants={containerVariants}
             className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
           >
-            {wallets.map((wallet) => (
-              <motion.div key={wallet.id} variants={itemVariants}>
-                <button
-                  onClick={() => navigate(`/wallets/${wallet.id}`)}
-                  className="card-premium p-5 group w-full text-left hover:border-primary/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        {wallet.type === "watch_only" ? (
-                          <Eye className="h-5 w-5 text-primary" />
-                        ) : (
-                          <Wallet className="h-5 w-5 text-primary" />
+            {wallets.map((wallet) => {
+              // Get Bitcoin balance if wallet has BTC address
+              const hasBitcoin = wallet.addresses.some(
+                (addr) => addr.chain === "bitcoin"
+              );
+              const btcState = hasBitcoin ? getWalletState(wallet.id) : null;
+              const btcBalance = btcState?.balance;
+              const totalSats = btcBalance
+                ? btcBalance.confirmed + btcBalance.unconfirmed
+                : 0;
+              const usdValue =
+                btcBalance && price.btcUsd
+                  ? (totalSats / 100_000_000) * price.btcUsd
+                  : null;
+
+              return (
+                <motion.div key={wallet.id} variants={itemVariants}>
+                  <button
+                    onClick={() => navigate(`/wallets/${wallet.id}`)}
+                    className="card-premium p-5 group w-full text-left hover:border-primary/50 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          {wallet.type === "watch_only" ? (
+                            <Eye className="h-5 w-5 text-primary" />
+                          ) : (
+                            <Wallet className="h-5 w-5 text-primary" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-medium group-hover:text-primary transition-colors">
+                            {wallet.name}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {wallet.addresses.length} address
+                            {wallet.addresses.length !== 1 ? "es" : ""}
+                            {wallet.type === "watch_only" && " • Watch-only"}
+                          </p>
+                        </div>
+                      </div>
+                      {!wallet.hasBackupVerified && wallet.type === "hd" && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning">
+                          Backup pending
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bitcoin Balance */}
+                    {hasBitcoin && btcBalance && (
+                      <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Bitcoin className="h-4 w-4 text-orange-500" />
+                            <span className="text-sm text-muted-foreground">
+                              Bitcoin
+                            </span>
+                          </div>
+                          {btcState?.isSyncing && (
+                            <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" />
+                          )}
+                        </div>
+                        <p className="font-mono text-lg font-semibold mt-1 tabular-nums">
+                          {formatBtc(totalSats, 8)}{" "}
+                          <span className="text-sm text-muted-foreground">
+                            BTC
+                          </span>
+                        </p>
+                        {usdValue !== null && (
+                          <p className="font-mono text-sm text-muted-foreground tabular-nums">
+                            $
+                            {usdValue.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </p>
                         )}
                       </div>
-                      <div>
-                        <h3 className="font-medium group-hover:text-primary transition-colors">
-                          {wallet.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {wallet.addresses.length} address
-                          {wallet.addresses.length !== 1 ? "es" : ""}
-                          {wallet.type === "watch_only" && " • Watch-only"}
-                        </p>
-                      </div>
-                    </div>
-                    {!wallet.hasBackupVerified && wallet.type === "hd" && (
-                      <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning">
-                        Backup pending
-                      </span>
                     )}
-                  </div>
 
-                  {/* Addresses */}
-                  <div className="space-y-2">
-                    {wallet.addresses.map((addr) => {
-                      const colors = chainColors[addr.chain] || {
-                        text: "text-muted-foreground",
-                        bg: "bg-muted",
-                      };
-                      return (
-                        <div
-                          key={`${addr.chain}-${addr.address}`}
-                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
-                        >
+                    {/* Addresses */}
+                    <div className="space-y-2">
+                      {wallet.addresses.map((addr) => {
+                        const colors = chainColors[addr.chain] || {
+                          text: "text-muted-foreground",
+                          bg: "bg-muted",
+                        };
+                        return (
                           <div
-                            className={cn(
-                              "w-6 h-6 rounded-md flex items-center justify-center",
-                              colors.bg
-                            )}
+                            key={`${addr.chain}-${addr.address}`}
+                            className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
                           >
-                            {chainIcons[addr.chain] || (
-                              <Circle className="h-3 w-3" />
-                            )}
+                            <div
+                              className={cn(
+                                "w-6 h-6 rounded-md flex items-center justify-center",
+                                colors.bg
+                              )}
+                            >
+                              {chainIcons[addr.chain] || (
+                                <Circle className="h-3 w-3" />
+                              )}
+                            </div>
+                            <span className="text-xs font-mono flex-1 truncate">
+                              {truncateAddress(addr.address, 8, 6)}
+                            </span>
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyAddress(addr.address);
+                              }}
+                              className="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
+                            >
+                              <Copy className="h-3 w-3 text-muted-foreground" />
+                            </span>
                           </div>
-                          <span className="text-xs font-mono flex-1 truncate">
-                            {truncateAddress(addr.address, 8, 6)}
-                          </span>
-                          <span
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyAddress(addr.address);
-                            }}
-                            className="p-1 rounded hover:bg-muted transition-colors cursor-pointer"
-                          >
-                            <Copy className="h-3 w-3 text-muted-foreground" />
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </button>
-              </motion.div>
-            ))}
+                        );
+                      })}
+                    </div>
+                  </button>
+                </motion.div>
+              );
+            })}
           </motion.div>
         ) : (
           <motion.div variants={itemVariants}>
