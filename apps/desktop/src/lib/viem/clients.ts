@@ -20,19 +20,40 @@ import {
 } from "viem";
 import { getChain, type EVMChainId } from "@coinbox/chains";
 import { getViemChainOrThrow } from "@/lib/chains";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 // Cache for public clients to avoid recreating them
 const publicClientCache: Map<string, PublicClient> = new Map();
 
 /**
+ * Get custom RPC URL from settings if configured
+ */
+function getCustomRpcUrl(chainId: EVMChainId): string | undefined {
+  try {
+    return useSettingsStore.getState().getRpcUrl(chainId);
+  } catch {
+    // Settings store may not be initialized yet
+    return undefined;
+  }
+}
+
+/**
  * Get or create a public client for the specified chain
  * Public clients are used for read-only operations (getBalance, getBlock, etc.)
+ *
+ * If customRpcUrl is provided, it takes precedence.
+ * Otherwise, checks settings store for user-configured RPC.
+ * Falls back to default RPC from chain registry.
  */
 export function getPublicClient(
   chainId: EVMChainId,
   customRpcUrl?: string
 ): PublicClient {
-  const cacheKey = customRpcUrl ? `${chainId}:${customRpcUrl}` : chainId;
+  // Check settings for user-configured RPC if not explicitly provided
+  const settingsRpcUrl = customRpcUrl ? undefined : getCustomRpcUrl(chainId);
+  const effectiveRpcUrl = customRpcUrl || settingsRpcUrl;
+
+  const cacheKey = effectiveRpcUrl ? `${chainId}:${effectiveRpcUrl}` : chainId;
 
   // Return cached client if available
   const cached = publicClientCache.get(cacheKey);
@@ -44,7 +65,7 @@ export function getPublicClient(
   }
 
   const viemChain = getViemChainOrThrow(chainId);
-  const rpcUrl = customRpcUrl || chainDef.rpcUrl;
+  const rpcUrl = effectiveRpcUrl || chainDef.rpcUrl;
 
   const client = createPublicClient({
     chain: viemChain,
@@ -64,6 +85,8 @@ export function getPublicClient(
 /**
  * Create a wallet client for signing and sending transactions
  * The account parameter is required and should be a TauriAccount
+ *
+ * Uses settings store RPC if configured, otherwise falls back to default.
  */
 export function getWalletClient(
   chainId: EVMChainId,
@@ -75,8 +98,12 @@ export function getWalletClient(
     throw new Error(`Unknown chain: ${chainId}`);
   }
 
+  // Check settings for user-configured RPC if not explicitly provided
+  const settingsRpcUrl = customRpcUrl ? undefined : getCustomRpcUrl(chainId);
+  const effectiveRpcUrl = customRpcUrl || settingsRpcUrl;
+
   const viemChain = getViemChainOrThrow(chainId);
-  const rpcUrl = customRpcUrl || chainDef.rpcUrl;
+  const rpcUrl = effectiveRpcUrl || chainDef.rpcUrl;
 
   return createWalletClient({
     account,

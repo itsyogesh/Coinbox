@@ -2,12 +2,13 @@
  * ERC-20 Token Balance Fetching
  *
  * Provides multicall-based token balance fetching.
- * Token definitions come from @coinbox/chains.
+ * Token definitions come from @coinbox/chains + custom tokens from settings.
  */
 
 import { erc20Abi, type Address } from "viem";
 import { getPublicClient } from "./clients";
 import { getChain, type EVMChainId } from "@coinbox/chains";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 // ============================================================================
 // Token Types
@@ -28,15 +29,55 @@ export interface TokenBalance {
 // ============================================================================
 
 /**
+ * Get custom tokens from settings store
+ */
+function getCustomTokens(chainId: EVMChainId) {
+  try {
+    return useSettingsStore.getState().getCustomTokens(chainId);
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Fetch token balances using multicall for efficiency
+ * Includes both registry tokens and custom tokens from settings
  */
 export async function fetchTokenBalances(
   address: Address,
   chainId: EVMChainId
 ): Promise<TokenBalance[]> {
   const chainDef = getChain(chainId);
-  const tokens = chainDef?.tokens ?? [];
-  if (tokens.length === 0) {
+  const registryTokens = chainDef?.tokens ?? [];
+  const customTokens = getCustomTokens(chainId);
+
+  // Combine registry tokens and custom tokens, avoiding duplicates
+  const seenAddresses = new Set<string>();
+  const allTokens: Array<{
+    address: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+    coingeckoId?: string;
+  }> = [];
+
+  for (const token of registryTokens) {
+    const addr = token.address.toLowerCase();
+    if (!seenAddresses.has(addr)) {
+      seenAddresses.add(addr);
+      allTokens.push(token);
+    }
+  }
+
+  for (const token of customTokens) {
+    const addr = token.address.toLowerCase();
+    if (!seenAddresses.has(addr)) {
+      seenAddresses.add(addr);
+      allTokens.push(token);
+    }
+  }
+
+  if (allTokens.length === 0) {
     return [];
   }
 
@@ -45,7 +86,7 @@ export async function fetchTokenBalances(
   try {
     // Use multicall to fetch all balances in a single RPC call
     const results = await client.multicall({
-      contracts: tokens.map((token) => ({
+      contracts: allTokens.map((token) => ({
         address: token.address as Address,
         abi: erc20Abi,
         functionName: "balanceOf",
@@ -56,8 +97,8 @@ export async function fetchTokenBalances(
 
     const balances: TokenBalance[] = [];
 
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i];
+    for (let i = 0; i < allTokens.length; i++) {
+      const token = allTokens[i];
       const result = results[i];
 
       // Skip if token or result is undefined
@@ -93,6 +134,59 @@ export async function fetchTokenBalances(
       error
     );
     return [];
+  }
+}
+
+/**
+ * Fetch token metadata (name, symbol, decimals) from a contract address
+ * Used for adding custom tokens
+ */
+export async function fetchTokenMetadata(
+  tokenAddress: Address,
+  chainId: EVMChainId
+): Promise<{ name: string; symbol: string; decimals: number } | null> {
+  const client = getPublicClient(chainId);
+
+  try {
+    const results = await client.multicall({
+      contracts: [
+        {
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "name",
+        },
+        {
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "symbol",
+        },
+        {
+          address: tokenAddress,
+          abi: erc20Abi,
+          functionName: "decimals",
+        },
+      ],
+      allowFailure: true,
+    });
+
+    const [nameResult, symbolResult, decimalsResult] = results;
+
+    if (
+      nameResult.status !== "success" ||
+      symbolResult.status !== "success" ||
+      decimalsResult.status !== "success"
+    ) {
+      return null;
+    }
+
+    return {
+      name: nameResult.result as string,
+      symbol: symbolResult.result as string,
+      decimals: decimalsResult.result as number,
+    };
+  } catch (error) {
+    console.error(`[Tokens] Failed to fetch token metadata:`, error);
+    return null;
   }
 }
 

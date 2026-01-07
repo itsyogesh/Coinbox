@@ -11,9 +11,11 @@ import {
   fetchNativeBalance,
   fetchTokenBalances,
   fetchGasPrice as viemFetchGasPrice,
+  fetchAllTransactions,
   type EVMChainId,
   type EthereumBalance,
   type TokenBalance,
+  type TransactionRecord,
   formatEther,
   formatGwei,
 } from "@/lib/viem";
@@ -53,19 +55,8 @@ const bigIntSafeLocalStorage = {
 // Types
 // ============================================================================
 
-export interface EthereumTransaction {
-  hash: string;
-  chainId: EVMChainId;
-  blockNumber: number | null;
-  timestamp: number;
-  from: string;
-  to: string | null;
-  value: string; // in wei
-  gasUsed: string;
-  gasPrice: string;
-  status: "success" | "failed" | "pending";
-  direction: "send" | "receive" | "self" | "contract";
-}
+// Re-export TransactionRecord as EthereumTransaction for components
+export type EthereumTransaction = TransactionRecord;
 
 // TokenBalance is imported from @/lib/viem
 
@@ -128,6 +119,11 @@ interface EthereumStoreState {
 
   // Actions
   syncBalance: (
+    walletId: string,
+    address: Address,
+    chainId: EVMChainId
+  ) => Promise<void>;
+  syncTransactions: (
     walletId: string,
     address: Address,
     chainId: EVMChainId
@@ -257,6 +253,51 @@ export const useEthereumStore = create<EthereumStoreState>()(
         }
       },
 
+      // Sync transactions for a specific chain
+      syncTransactions: async (
+        walletId: string,
+        address: Address,
+        chainId: EVMChainId
+      ) => {
+        // Ensure wallet state exists
+        get().initWallet(walletId);
+
+        try {
+          console.log(
+            `[EthereumStore] Fetching ${chainId} transactions for ${address}`
+          );
+
+          const transactions = await fetchAllTransactions(address, chainId, {
+            limit: 100,
+          });
+
+          set((state) => {
+            const wallet = state.wallets[walletId] || createDefaultWalletState();
+            return {
+              wallets: {
+                ...state.wallets,
+                [walletId]: {
+                  ...wallet,
+                  [chainId]: {
+                    ...wallet[chainId],
+                    transactions,
+                  },
+                },
+              },
+            };
+          });
+
+          console.log(
+            `[EthereumStore] ${chainId}: ${transactions.length} transactions fetched`
+          );
+        } catch (error) {
+          console.error(
+            `[EthereumStore] Failed to fetch ${chainId} transactions:`,
+            error
+          );
+        }
+      },
+
       // Sync all chains for a wallet
       syncAllChains: async (walletId: string, address: Address) => {
         const chains: EVMChainId[] = [
@@ -271,11 +312,12 @@ export const useEthereumStore = create<EthereumStoreState>()(
           `[EthereumStore] Syncing all chains for wallet ${walletId}`
         );
 
-        // Sync all chains in parallel
+        // Sync balances and transactions for all chains in parallel
         await Promise.allSettled(
-          chains.map((chainId) =>
-            get().syncBalance(walletId, address, chainId)
-          )
+          chains.flatMap((chainId) => [
+            get().syncBalance(walletId, address, chainId),
+            get().syncTransactions(walletId, address, chainId),
+          ])
         );
 
         console.log(`[EthereumStore] All chains synced for ${walletId}`);

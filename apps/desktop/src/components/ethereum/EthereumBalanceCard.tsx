@@ -12,8 +12,12 @@ import {
   ChevronDown,
   AlertCircle,
   Coins,
+  Plus,
+  Send,
 } from "lucide-react";
 import { ChainIcon, TokenIcon } from "@/components/ui/crypto-icon";
+import { AddTokenDialog } from "./AddTokenDialog";
+import { SendTokenDialog } from "./SendTokenDialog";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -90,6 +94,10 @@ export function EthereumBalanceCard({
   const isSyncing = useIsAnySyncing(walletId);
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isAddTokenOpen, setIsAddTokenOpen] = useState(false);
+  const [isSendOpen, setIsSendOpen] = useState(false);
+  const [addTokenChain, setAddTokenChain] = useState<EVMChainId>("ethereum");
+  const [sendChain, setSendChain] = useState<EVMChainId>("ethereum");
 
   const walletState = wallets[walletId];
 
@@ -198,16 +206,30 @@ export function EthereumBalanceCard({
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleSync}
-          disabled={isSyncing}
-          className="gap-2"
-        >
-          <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
-          {isSyncing ? "Syncing..." : "Sync All"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSendChain("ethereum");
+              setIsSendOpen(true);
+            }}
+            className="gap-2"
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("h-4 w-4", isSyncing && "animate-spin")} />
+            {isSyncing ? "Syncing..." : "Sync"}
+          </Button>
+        </div>
       </div>
 
       {/* Error State */}
@@ -326,12 +348,27 @@ export function EthereumBalanceCard({
                   </div>
 
                   {/* Tokens */}
-                  {allTokens.length > 0 && (
-                    <div className="space-y-2">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
                       <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
                         <Coins className="h-3.5 w-3.5" />
                         Tokens
                       </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => {
+                          setAddTokenChain("ethereum");
+                          setIsAddTokenOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add Token
+                      </Button>
+                    </div>
+                    {allTokens.length > 0 && (
+                      <>
                       {allTokens.map((token, idx) => {
                         return (
                           <div
@@ -359,12 +396,34 @@ export function EthereumBalanceCard({
                           </div>
                         );
                       })}
-                    </div>
-                  )}
+                      </>
+                    )}
+                    {allTokens.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-3">
+                        No tokens found. Add a custom token to track it.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Add Token Dialog */}
+          <AddTokenDialog
+            chainId={addTokenChain}
+            isOpen={isAddTokenOpen}
+            onClose={() => setIsAddTokenOpen(false)}
+            onSuccess={() => handleSync()}
+          />
+
+          {/* Send Token Dialog */}
+          <SendTokenDialog
+            walletId={walletId}
+            chainId={sendChain}
+            isOpen={isSendOpen}
+            onClose={() => setIsSendOpen(false)}
+          />
         </div>
       ) : (
         /* Empty State */

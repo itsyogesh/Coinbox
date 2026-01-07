@@ -180,18 +180,41 @@ function TransactionRow({
   onCopy,
   onOpenExplorer,
 }: TransactionRowProps) {
-  const { hash, chainId, direction, value, status, timestamp } = transaction;
+  const { hash, chainId, direction, value, status, timestamp, tokenTransfer } = transaction;
 
   const isReceived = direction === "receive";
   const isSelf = direction === "self";
   const isContract = direction === "contract";
   const isPending = status === "pending";
   const isSuccess = status === "success";
+  const isTokenTransfer = !!tokenTransfer;
 
   const chain = chainConfig[chainId];
 
-  // Convert wei to ETH
-  const valueEth = parseFloat(value) / 1e18;
+  // Get native currency symbol based on chain
+  const nativeSymbol = chainId === "polygon" ? "POL" : "ETH";
+
+  // Calculate display amount
+  let displayAmount: string;
+  let displaySymbol: string;
+
+  if (isTokenTransfer && tokenTransfer) {
+    // Token transfer - use token decimals
+    const tokenValue = parseFloat(tokenTransfer.value) / Math.pow(10, tokenTransfer.decimals);
+    displayAmount = tokenValue.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    });
+    displaySymbol = tokenTransfer.symbol;
+  } else {
+    // Native transfer - use 18 decimals
+    const valueEth = parseFloat(value) / 1e18;
+    displayAmount = valueEth.toLocaleString(undefined, {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 6,
+    });
+    displaySymbol = nativeSymbol;
+  }
 
   const Icon = isReceived
     ? ArrowDownLeft
@@ -223,6 +246,19 @@ function TransactionRow({
     }
   );
 
+  // Transaction type label
+  const typeLabel = isTokenTransfer
+    ? direction === "receive"
+      ? "Received Token"
+      : "Sent Token"
+    : direction === "receive"
+    ? "Received"
+    : direction === "send"
+    ? "Sent"
+    : direction === "contract"
+    ? "Contract"
+    : "Self";
+
   return (
     <motion.div
       variants={itemVariants}
@@ -245,15 +281,7 @@ function TransactionRow({
       {/* Transaction Details */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-medium capitalize">
-            {direction === "receive"
-              ? "Received"
-              : direction === "send"
-              ? "Sent"
-              : direction === "contract"
-              ? "Contract"
-              : "Self"}
-          </span>
+          <span className="font-medium">{typeLabel}</span>
           {isPending ? (
             <Clock className="h-3.5 w-3.5 text-warning" />
           ) : isSuccess ? (
@@ -291,13 +319,11 @@ function TransactionRow({
       {/* Amount */}
       <div className="text-right shrink-0">
         <p className={cn("font-mono font-medium tabular-nums", amountColor)}>
-          {amountPrefix}
-          {valueEth.toLocaleString(undefined, {
-            minimumFractionDigits: 4,
-            maximumFractionDigits: 6,
-          })}{" "}
-          ETH
+          {amountPrefix}{displayAmount} {displaySymbol}
         </p>
+        {isTokenTransfer && tokenTransfer && (
+          <p className="text-xs text-muted-foreground">{tokenTransfer.name}</p>
+        )}
       </div>
 
       {/* Date & Actions */}

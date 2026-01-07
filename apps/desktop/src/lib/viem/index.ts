@@ -52,5 +52,15 @@ export {
 // ERC-20 Token support
 export {
   fetchTokenBalances,
+  fetchTokenMetadata,
   type TokenBalance,
 } from "./tokens";
+
+// Block explorer API (Etherscan)
+export {
+  fetchEthTransactions,
+  fetchTokenTransfers,
+  fetchAllTransactions,
+  setApiKey as setExplorerApiKey,
+  type TransactionRecord,
+} from "./etherscan";
