@@ -1,7 +1,7 @@
 {
-  "name": "@coinbox/core",
-  "version": "2.0.0",
-  "description": "Coinbox core types and business logic",
+  "name": "@coinbox/chains",
+  "version": "1.0.0",
+  "description": "Coinbox chain registry - single source of truth for blockchain network data",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -9,10 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js"
     }
   },
   "files": [
@@ -28,5 +24,12 @@
   "devDependencies": {
     "typescript": "^5.7.2"
   },
+  "keywords": [
+    "blockchain",
+    "chains",
+    "ethereum",
+    "bitcoin",
+    "registry"
+  ],
   "license": "MIT"
 }

@@ -55,8 +55,6 @@ export type WalletCreationStep =
 export interface WalletCreationState {
   step: WalletCreationStep;
   walletName: string;
-  /** @deprecated Use selectedFamilies instead */
-  selectedChains: string[];
   /** Selected chain families (bitcoin, evm, solana) */
   selectedFamilies: ChainFamily[];
   password: string;
@@ -101,8 +99,6 @@ interface WalletState {
   startCreation: () => void;
   setCreationStep: (step: WalletCreationStep) => void;
   setWalletName: (name: string) => void;
-  /** @deprecated Use toggleFamilySelection instead */
-  toggleChainSelection: (chainId: string) => void;
   /** Toggle selection of a chain family (e.g., 'bitcoin', 'evm') */
   toggleFamilySelection: (family: ChainFamily) => void;
   setPassword: (password: string) => void;
@@ -125,7 +121,6 @@ interface WalletState {
 const initialCreationState: WalletCreationState = {
   step: "select-chains",
   walletName: "",
-  selectedChains: [], // Deprecated, kept for compatibility
   selectedFamilies: [],
   password: "",
   mnemonic: null,
@@ -247,32 +242,16 @@ export const useWalletStore = create<WalletState>()(
           }));
         },
 
-        toggleChainSelection: (chainId) => {
-          // Deprecated: kept for backward compatibility
-          set((state) => {
-            const selected = state.creation.selectedChains;
-            const newSelected = selected.includes(chainId)
-              ? selected.filter((id) => id !== chainId)
-              : [...selected, chainId];
-            return {
-              creation: { ...state.creation, selectedChains: newSelected },
-            };
-          });
-        },
-
         toggleFamilySelection: (family) => {
           set((state) => {
             const selected = state.creation.selectedFamilies;
             const newSelected = selected.includes(family)
               ? selected.filter((f) => f !== family)
               : [...selected, family];
-            // Also update selectedChains for backward compatibility
-            const chainIds = familiesToChainIds(newSelected);
             return {
               creation: {
                 ...state.creation,
                 selectedFamilies: newSelected,
-                selectedChains: chainIds,
               },
             };
           });
@@ -288,16 +267,19 @@ export const useWalletStore = create<WalletState>()(
           const { creation } = get();
           set({ isCreating: true });
 
+          // Convert families to chain IDs for the backend
+          const chainIds = familiesToChainIds(creation.selectedFamilies);
+
           try {
             const response = await createHDWallet(
               creation.walletName,
-              creation.selectedChains,
+              chainIds,
               creation.password,
               12
             );
 
             // Initialize Bitcoin BDK wallet if Bitcoin is included
-            if (creation.selectedChains.includes("bitcoin")) {
+            if (chainIds.includes("bitcoin")) {
               try {
                 await initBitcoinFromCachedSeed(response.wallet_id, 0);
                 console.log("[WalletStore] Bitcoin wallet initialized");

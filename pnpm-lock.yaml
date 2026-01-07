@@ -10,6 +10,9 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@coinbox/chains':
+        specifier: workspace:*
+        version: link:../../packages/chains
       '@coinbox/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -141,7 +144,17 @@ importers:
         specifier: ^6.0.5
         version: 6.4.1(@types/node@22.19.3)(jiti@1.21.7)
 
+  packages/chains:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
   packages/core:
+    dependencies:
+      '@coinbox/chains':
+        specifier: workspace:*
+        version: link:../chains
     devDependencies:
       typescript:
         specifier: ^5.7.2

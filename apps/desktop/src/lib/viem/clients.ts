@@ -18,11 +18,8 @@ import {
   parseUnits,
   type Address,
 } from "viem";
-import {
-  type EVMChainId,
-  type TestnetChainId,
-  getChainConfig,
-} from "./chains";
+import { getChain, type EVMChainId } from "@coinbox/chains";
+import { getViemChainOrThrow } from "@/lib/chains";
 
 // Cache for public clients to avoid recreating them
 const publicClientCache: Map<string, PublicClient> = new Map();
@@ -32,7 +29,7 @@ const publicClientCache: Map<string, PublicClient> = new Map();
  * Public clients are used for read-only operations (getBalance, getBlock, etc.)
  */
 export function getPublicClient(
-  chainId: EVMChainId | TestnetChainId,
+  chainId: EVMChainId,
   customRpcUrl?: string
 ): PublicClient {
   const cacheKey = customRpcUrl ? `${chainId}:${customRpcUrl}` : chainId;
@@ -41,15 +38,16 @@ export function getPublicClient(
   const cached = publicClientCache.get(cacheKey);
   if (cached) return cached;
 
-  const config = getChainConfig(chainId);
-  if (!config) {
+  const chainDef = getChain(chainId);
+  if (!chainDef) {
     throw new Error(`Unknown chain: ${chainId}`);
   }
 
-  const rpcUrl = customRpcUrl || config.rpcUrl;
+  const viemChain = getViemChainOrThrow(chainId);
+  const rpcUrl = customRpcUrl || chainDef.rpcUrl;
 
   const client = createPublicClient({
-    chain: config.chain,
+    chain: viemChain,
     transport: http(rpcUrl, {
       timeout: 30_000, // 30 second timeout
       retryCount: 3,
@@ -68,20 +66,21 @@ export function getPublicClient(
  * The account parameter is required and should be a TauriAccount
  */
 export function getWalletClient(
-  chainId: EVMChainId | TestnetChainId,
+  chainId: EVMChainId,
   account: Account,
   customRpcUrl?: string
 ): WalletClient<Transport, Chain, Account> {
-  const config = getChainConfig(chainId);
-  if (!config) {
+  const chainDef = getChain(chainId);
+  if (!chainDef) {
     throw new Error(`Unknown chain: ${chainId}`);
   }
 
-  const rpcUrl = customRpcUrl || config.rpcUrl;
+  const viemChain = getViemChainOrThrow(chainId);
+  const rpcUrl = customRpcUrl || chainDef.rpcUrl;
 
   return createWalletClient({
     account,
-    chain: config.chain,
+    chain: viemChain,
     transport: http(rpcUrl, {
       timeout: 30_000,
       retryCount: 3,
@@ -124,26 +123,24 @@ export interface EthereumBalance {
  */
 export async function fetchNativeBalance(
   address: Address,
-  chainId: EVMChainId | TestnetChainId
+  chainId: EVMChainId
 ): Promise<EthereumBalance> {
   const client = getPublicClient(chainId);
-  const config = getChainConfig(chainId);
+  const chainDef = getChain(chainId);
 
   const balance = await client.getBalance({ address });
 
   return {
     wei: balance.toString(), // Convert BigInt to string for JSON serialization
     formatted: formatEther(balance),
-    symbol: config?.nativeCurrency.symbol ?? "ETH",
+    symbol: chainDef?.nativeCurrency.symbol ?? "ETH",
   };
 }
 
 /**
  * Fetch gas price for a chain
  */
-export async function fetchGasPrice(
-  chainId: EVMChainId | TestnetChainId
-): Promise<bigint> {
+export async function fetchGasPrice(chainId: EVMChainId): Promise<bigint> {
   const client = getPublicClient(chainId);
   return client.getGasPrice();
 }
@@ -152,7 +149,7 @@ export async function fetchGasPrice(
  * Estimate gas for a transaction
  */
 export async function estimateGas(
-  chainId: EVMChainId | TestnetChainId,
+  chainId: EVMChainId,
   params: {
     from: Address;
     to: Address;
@@ -172,9 +169,7 @@ export async function estimateGas(
 /**
  * Get current block number
  */
-export async function getBlockNumber(
-  chainId: EVMChainId | TestnetChainId
-): Promise<bigint> {
+export async function getBlockNumber(chainId: EVMChainId): Promise<bigint> {
   const client = getPublicClient(chainId);
   return client.getBlockNumber();
 }
@@ -183,19 +178,20 @@ export async function getBlockNumber(
  * Test RPC connection
  */
 export async function testRpcConnection(
-  chainId: EVMChainId | TestnetChainId,
+  chainId: EVMChainId,
   rpcUrl?: string
 ): Promise<{ success: boolean; blockNumber?: bigint; error?: string }> {
   try {
     // Create a fresh client (don't use cache for testing)
-    const config = getChainConfig(chainId);
-    if (!config) {
+    const chainDef = getChain(chainId);
+    if (!chainDef) {
       return { success: false, error: `Unknown chain: ${chainId}` };
     }
 
+    const viemChain = getViemChainOrThrow(chainId);
     const client = createPublicClient({
-      chain: config.chain,
-      transport: http(rpcUrl || config.rpcUrl, { timeout: 10_000 }),
+      chain: viemChain,
+      transport: http(rpcUrl || chainDef.rpcUrl, { timeout: 10_000 }),
     });
 
     const blockNumber = await client.getBlockNumber();

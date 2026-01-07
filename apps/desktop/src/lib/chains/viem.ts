@@ -14,7 +14,7 @@ import {
   sepolia,
   type Chain,
 } from "viem/chains";
-import { getChain, getEnabledChainsByFamily, type EVMChainId, isEVMChainId } from "@coinbox/core";
+import { getChain, getEnabledChainsByFamily, type EVMChainId, isEVMChainId } from "@coinbox/chains";
 
 // ============================================================================
 // Viem Chain Object Mapping

@@ -1,14 +1,12 @@
 /**
  * @coinbox/core
  *
- * Core types and business logic for Coinbox multi-chain portfolio tracker
+ * Core types and business logic for Coinbox multi-chain portfolio tracker.
+ * Chain data is now in @coinbox/chains package.
  */
 
 // Re-export all types
 export * from './types';
-
-// Chain Registry - single source of truth for all chain data
-export * from './chains';
 
 // Version
 export const VERSION = '2.0.0';

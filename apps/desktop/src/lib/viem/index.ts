@@ -2,27 +2,16 @@
  * Viem integration for EVM chains
  *
  * This module provides:
- * - Chain configurations for Ethereum + L2s
  * - Public client factory for read-only RPC operations
  * - Wallet client factory with Tauri signing bridge
  * - TauriAccount for secure signing via Rust backend
  * - Balance and gas utilities
+ *
+ * Chain configurations are now in @coinbox/chains package.
  */
 
-// Chain configurations
-export {
-  type EVMChainId,
-  type TestnetChainId,
-  type ChainConfig,
-  MAINNET_CHAINS,
-  TESTNET_CHAINS,
-  ALL_CHAINS,
-  EVM_CHAIN_IDS,
-  getChainConfig,
-  isEVMChain,
-  isTestnet,
-  getChainIdNumber,
-} from "./chains";
+// Re-export chain types from @coinbox/chains for backward compatibility
+export { type EVMChainId, isEVMChainId as isEVMChain } from "@coinbox/chains";
 
 // Client factory and utilities
 export {
@@ -63,8 +52,5 @@ export {
 // ERC-20 Token support
 export {
   fetchTokenBalances,
-  getTokenInfo,
-  COMMON_TOKENS,
-  type TokenInfo,
   type TokenBalance,
 } from "./tokens";

@@ -382,9 +382,7 @@ Delete this file after writing down the words.`;
 
                 <p className="text-xs text-muted-foreground text-center">
                   Selected: {creation.selectedFamilies.length} network
-                  {creation.selectedFamilies.length !== 1 ? "s" : ""}{" "}
-                  ({creation.selectedChains.length} chain
-                  {creation.selectedChains.length !== 1 ? "s" : ""})
+                  {creation.selectedFamilies.length !== 1 ? "s" : ""}
                 </p>
               </div>
             )}

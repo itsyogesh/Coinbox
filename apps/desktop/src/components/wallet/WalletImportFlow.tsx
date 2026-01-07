@@ -58,8 +58,6 @@ interface ImportedAddress {
 interface ImportState {
   step: ImportStep;
   mnemonic: string;
-  /** @deprecated Use selectedFamilies instead */
-  selectedChains: string[];
   /** Selected chain families */
   selectedFamilies: ChainFamily[];
   walletName: string;
@@ -120,7 +118,6 @@ const itemVariants = {
 const initialState: ImportState = {
   step: "enter-mnemonic",
   mnemonic: "",
-  selectedChains: [], // Deprecated, kept for compatibility
   selectedFamilies: [],
   walletName: "",
   password: "",
@@ -291,7 +288,6 @@ export function WalletImportFlow({
       return {
         ...s,
         selectedFamilies: newFamilies,
-        selectedChains: familiesToChainIds(newFamilies), // Keep for compatibility
       };
     });
   };
@@ -460,9 +456,7 @@ export function WalletImportFlow({
 
                 <p className="text-xs text-muted-foreground text-center">
                   Selected: {state.selectedFamilies.length} network
-                  {state.selectedFamilies.length !== 1 ? "s" : ""}{" "}
-                  ({state.selectedChains.length} chain
-                  {state.selectedChains.length !== 1 ? "s" : ""})
+                  {state.selectedFamilies.length !== 1 ? "s" : ""}
                 </p>
               </div>
             )}

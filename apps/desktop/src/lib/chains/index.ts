@@ -1,7 +1,7 @@
 /**
  * Desktop Chain Integrations
  *
- * Desktop-specific chain utilities that bridge @coinbox/core registry
+ * Desktop-specific chain utilities that bridge @coinbox/chains registry
  * to viem and @web3icons.
  *
  * @example
@@ -36,7 +36,7 @@ export {
   getIconComponent,
 } from "./icons";
 
-// Re-export everything from @coinbox/core chains for convenience
+// Re-export everything from @coinbox/chains for convenience
 export {
   // Types
   type ChainFamily,
@@ -80,4 +80,4 @@ export {
   getPrimaryChainForFamily,
   getChainColor,
   getFamilyColor,
-} from "@coinbox/core";
+} from "@coinbox/chains";
