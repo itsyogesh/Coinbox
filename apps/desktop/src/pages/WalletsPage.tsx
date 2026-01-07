@@ -5,15 +5,13 @@ import {
   Plus,
   Wallet,
   Eye,
-  Bitcoin,
-  Hexagon,
   QrCode,
   Import,
   ArrowRight,
-  Circle,
   Copy,
   RefreshCw,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 import { cn } from "@/lib/utils";
 import { truncateAddress, copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,7 +21,9 @@ import { WalletImportFlow } from "@/components/wallet/WalletImportFlow";
 import { WatchOnlyFlow } from "@/components/wallet/WatchOnlyFlow";
 import { useWalletStore } from "@/stores/walletStore";
 import { useBitcoinStore } from "@/stores/bitcoinStore";
+import { useEthereumStore } from "@/stores/ethereumStore";
 import { formatBtc } from "@/lib/tauri/bitcoin";
+import { formatEther } from "@/lib/viem";
 
 // Animation variants
 const containerVariants = {
@@ -48,17 +48,6 @@ const itemVariants = {
       damping: 24,
     },
   },
-};
-
-// Chain icons lookup
-const chainIcons: Record<string, React.ReactNode> = {
-  bitcoin: <Bitcoin className="h-5 w-5 text-orange-500" />,
-  ethereum: <Hexagon className="h-5 w-5 text-blue-500" />,
-  arbitrum: <Circle className="h-5 w-5 text-blue-400" />,
-  optimism: <Circle className="h-5 w-5 text-red-500" />,
-  base: <Circle className="h-5 w-5 text-blue-600" />,
-  polygon: <Circle className="h-5 w-5 text-purple-500" />,
-  solana: <Circle className="h-5 w-5 text-gradient-start" />,
 };
 
 const chainColors: Record<string, { text: string; bg: string }> = {
@@ -86,7 +75,13 @@ export default function WalletsPage() {
     startCreation,
   } = useWalletStore();
 
-  const { getWalletState, fetchPrice, price } = useBitcoinStore();
+  const { getWalletState, fetchPrice: fetchBtcPrice, price: btcPrice } = useBitcoinStore();
+  const {
+    wallets: ethWallets,
+    fetchPrice: fetchEthPrice,
+    price: ethPrice,
+    getTotalBalanceUsd: getEthTotalUsd,
+  } = useEthereumStore();
 
   // Load chains on mount
   useEffect(() => {
@@ -95,12 +90,15 @@ export default function WalletsPage() {
     }
   }, [chainsLoaded, loadChains]);
 
-  // Fetch BTC price on mount
+  // Fetch prices on mount
   useEffect(() => {
-    if (!price.btcUsd) {
-      fetchPrice();
+    if (!btcPrice.btcUsd) {
+      fetchBtcPrice();
     }
-  }, [price.btcUsd, fetchPrice]);
+    if (!ethPrice.prices["ethereum"]) {
+      fetchEthPrice();
+    }
+  }, [btcPrice.btcUsd, fetchBtcPrice, ethPrice.prices, fetchEthPrice]);
 
   const handleOpenCreate = () => {
     startCreation();
@@ -196,9 +194,33 @@ export default function WalletsPage() {
                 ? btcBalance.confirmed + btcBalance.unconfirmed
                 : 0;
               const usdValue =
-                btcBalance && price.btcUsd
-                  ? (totalSats / 100_000_000) * price.btcUsd
+                btcBalance && btcPrice.btcUsd
+                  ? (totalSats / 100_000_000) * btcPrice.btcUsd
                   : null;
+
+              // Get Ethereum balance if wallet has ETH address
+              const hasEthereum = wallet.addresses.some(
+                (addr) => addr.chain === "ethereum"
+              );
+              const ethWalletState = ethWallets[wallet.id];
+              // Sum up all EVM chain native balances (ETH)
+              const allChainsWei = hasEthereum && ethWalletState
+                ? (["ethereum", "arbitrum", "optimism", "base", "polygon"] as const).reduce(
+                    (sum, chainId) => {
+                      const chainBalance = ethWalletState[chainId]?.balance;
+                      return sum + (chainBalance?.wei ? BigInt(chainBalance.wei) : BigInt(0));
+                    },
+                    BigInt(0)
+                  )
+                : BigInt(0);
+              const ethFormatted = formatEther(allChainsWei);
+              // Total USD value includes native ETH + all ERC-20 tokens
+              const ethTotalUsdValue = hasEthereum ? getEthTotalUsd(wallet.id) : 0;
+              const isEthSyncing = ethWalletState
+                ? (["ethereum", "arbitrum", "optimism", "base", "polygon"] as const).some(
+                    (chainId) => ethWalletState[chainId]?.isSyncing
+                  )
+                : false;
 
               return (
                 <motion.div key={wallet.id} variants={itemVariants}>
@@ -238,7 +260,7 @@ export default function WalletsPage() {
                       <div className="mb-4 p-3 rounded-lg bg-orange-500/5 border border-orange-500/10">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Bitcoin className="h-4 w-4 text-orange-500" />
+                            <ChainIcon chainId="bitcoin" size={16} variant="branded" />
                             <span className="text-sm text-muted-foreground">
                               Bitcoin
                             </span>
@@ -265,6 +287,41 @@ export default function WalletsPage() {
                       </div>
                     )}
 
+                    {/* Ethereum Balance */}
+                    {hasEthereum && (
+                      <div className="mb-4 p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <ChainIcon chainId="ethereum" size={16} variant="branded" />
+                            <span className="text-sm text-muted-foreground">
+                              Ethereum
+                            </span>
+                          </div>
+                          {isEthSyncing && (
+                            <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" />
+                          )}
+                        </div>
+                        <p className="font-mono text-lg font-semibold mt-1 tabular-nums">
+                          {parseFloat(ethFormatted) > 0
+                            ? parseFloat(ethFormatted).toFixed(6)
+                            : "0.00"}{" "}
+                          <span className="text-sm text-muted-foreground">
+                            ETH
+                          </span>
+                        </p>
+                        {ethTotalUsdValue > 0 && (
+                          <p className="font-mono text-sm text-muted-foreground tabular-nums">
+                            $
+                            {ethTotalUsdValue.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                            <span className="text-xs ml-1">(total)</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {/* Addresses */}
                     <div className="space-y-2">
                       {wallet.addresses.map((addr) => {
@@ -283,9 +340,7 @@ export default function WalletsPage() {
                                 colors.bg
                               )}
                             >
-                              {chainIcons[addr.chain] || (
-                                <Circle className="h-3 w-3" />
-                              )}
+                              <ChainIcon chainId={addr.chain} size={14} variant="branded" />
                             </div>
                             <span className="text-xs font-mono flex-1 truncate">
                               {truncateAddress(addr.address, 8, 6)}
@@ -398,9 +453,7 @@ export default function WalletsPage() {
                         colors.bg
                       )}
                     >
-                      {chainIcons[chain.id] || (
-                        <Circle className={cn("h-6 w-6", colors.text)} />
-                      )}
+                      <ChainIcon chainId={chain.id} size={24} variant="branded" />
                     </div>
                     <div className="flex-1">
                       <h3 className="font-medium">{chain.name}</h3>

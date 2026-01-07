@@ -1,4 +1,5 @@
 pub mod bitcoin;
+pub mod ethereum;
 pub mod store_sync;
 pub mod wallet;
 
@@ -12,6 +13,9 @@ pub use wallet::*;
 
 // Re-export bitcoin commands and state
 pub use bitcoin::*;
+
+// Re-export ethereum commands and state
+pub use ethereum::*;
 
 // Re-export store sync commands
 pub use store_sync::*;

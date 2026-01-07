@@ -7,5 +7,8 @@
 // Re-export all types
 export * from './types';
 
+// Chain Registry - single source of truth for all chain data
+export * from './chains';
+
 // Version
 export const VERSION = '2.0.0';

@@ -6,4 +6,5 @@
 
 export * from "./wallet";
 export * from "./bitcoin";
+export * from "./ethereum";
 export * from "./storeSync";

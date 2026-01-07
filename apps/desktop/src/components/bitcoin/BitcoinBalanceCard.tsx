@@ -5,12 +5,12 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  Bitcoin,
   RefreshCw,
   TrendingUp,
   Clock,
   AlertCircle,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -93,7 +93,7 @@ export function BitcoinBalanceCard({ walletId, address, onSync }: BitcoinBalance
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-            <Bitcoin className="h-5 w-5 text-orange-500" />
+            <ChainIcon chainId="bitcoin" size={24} variant="branded" />
           </div>
           <div>
             <h3 className="font-heading font-semibold">Bitcoin Balance</h3>
@@ -178,7 +178,7 @@ export function BitcoinBalanceCard({ walletId, address, onSync }: BitcoinBalance
         /* Empty State */
         <div className="text-center py-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-            <Bitcoin className="h-8 w-8 text-muted-foreground" />
+            <ChainIcon chainId="bitcoin" size={32} variant="mono" />
           </div>
           <p className="text-muted-foreground mb-4">
             Sync with the blockchain to see your balance

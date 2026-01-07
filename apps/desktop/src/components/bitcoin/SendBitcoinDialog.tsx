@@ -11,7 +11,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  Bitcoin,
   ArrowUpRight,
   AlertCircle,
   CheckCircle2,
@@ -21,6 +20,7 @@ import {
   Clock,
   Snail,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -278,7 +278,7 @@ export function SendBitcoinDialog({
                     min="0"
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-muted-foreground">
-                    <Bitcoin className="h-4 w-4 text-orange-500" />
+                    <ChainIcon chainId="bitcoin" size={16} variant="branded" />
                     <span className="text-sm">BTC</span>
                   </div>
                 </div>

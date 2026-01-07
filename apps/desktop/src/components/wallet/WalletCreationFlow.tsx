@@ -24,10 +24,8 @@ import {
   AlertTriangle,
   Shield,
   Sparkles,
-  Bitcoin,
-  Hexagon,
-  Circle,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import {
   Dialog,
@@ -45,6 +43,10 @@ import {
   useWalletStore,
   type WalletCreationStep,
 } from "@/stores/walletStore";
+import {
+  getEnabledFamilies,
+  getEnabledChainsByFamily,
+} from "@/lib/chains";
 
 // =============================================================================
 // Animation Variants
@@ -80,20 +82,6 @@ const itemVariants = {
 };
 
 // =============================================================================
-// Chain Icons
-// =============================================================================
-
-const chainIcons: Record<string, React.ReactNode> = {
-  bitcoin: <Bitcoin className="h-5 w-5 text-orange-500" />,
-  ethereum: <Hexagon className="h-5 w-5 text-blue-500" />,
-  arbitrum: <Circle className="h-5 w-5 text-blue-400" />,
-  optimism: <Circle className="h-5 w-5 text-red-500" />,
-  base: <Circle className="h-5 w-5 text-blue-600" />,
-  polygon: <Circle className="h-5 w-5 text-purple-500" />,
-  solana: <Circle className="h-5 w-5 text-gradient-start" />,
-};
-
-// =============================================================================
 // Props
 // =============================================================================
 
@@ -125,13 +113,16 @@ export function WalletCreationFlow({
     isCreating,
     setCreationStep,
     setWalletName,
-    toggleChainSelection,
+    toggleFamilySelection,
     setPassword,
     createWallet,
     verifyMnemonicWord,
     confirmMnemonicBackup,
     resetCreation,
   } = useWalletStore();
+
+  // Get enabled families from the registry
+  const families = useMemo(() => getEnabledFamilies(), []);
 
   // Load chains on mount
   useEffect(() => {
@@ -167,7 +158,7 @@ export function WalletCreationFlow({
   const canProceed = useMemo(() => {
     switch (creation.step) {
       case "select-chains":
-        return creation.selectedChains.length > 0;
+        return creation.selectedFamilies.length > 0;
       case "set-password":
         return (
           creation.walletName.trim().length > 0 &&
@@ -183,7 +174,7 @@ export function WalletCreationFlow({
     }
   }, [
     creation.step,
-    creation.selectedChains,
+    creation.selectedFamilies,
     creation.walletName,
     passwordValid,
     passwordsMatch,
@@ -330,56 +321,70 @@ Delete this file after writing down the words.`;
             exit="exit"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
-            {/* Step: Select Chains */}
+            {/* Step: Select Chains (Family-based) */}
             {creation.step === "select-chains" && (
               <div className="space-y-6">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-primary" />
-                    Select Chains
+                    Select Networks
                   </DialogTitle>
                   <DialogDescription>
-                    Choose which blockchain networks you want to use. You can add more later.
+                    Choose which blockchain networks you want to use. Selecting a network
+                    automatically includes all compatible chains.
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {mainnetChains.map((chain, i) => (
-                    <motion.button
-                      key={chain.id}
-                      custom={i}
-                      variants={itemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      onClick={() => toggleChainSelection(chain.id)}
-                      className={cn(
-                        "flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left",
-                        creation.selectedChains.includes(chain.id)
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-primary/50"
-                      )}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                        {chainIcons[chain.id] || (
-                          <Circle className="h-5 w-5 text-muted-foreground" />
+                <div className="space-y-3">
+                  {families.map((family, i) => {
+                    const isSelected = creation.selectedFamilies.includes(family.id);
+                    const chainsInFamily = getEnabledChainsByFamily(family.id);
+                    const chainNames = chainsInFamily.map(c => c.name).join(", ");
+
+                    return (
+                      <motion.button
+                        key={family.id}
+                        custom={i}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        onClick={() => toggleFamilySelection(family.id)}
+                        className={cn(
+                          "flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left w-full",
+                          isSelected
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50"
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{chain.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {chain.symbol}
+                      >
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center"
+                          style={{ backgroundColor: `${family.brandColor}20` }}
+                        >
+                          <ChainIcon chainId={family.primaryChainId} size={24} variant="branded" />
                         </div>
-                      </div>
-                      {creation.selectedChains.includes(chain.id) && (
-                        <Check className="h-5 w-5 text-primary shrink-0" />
-                      )}
-                    </motion.button>
-                  ))}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{family.name}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {family.id === "evm" ? (
+                              <>Includes: {chainNames}</>
+                            ) : (
+                              family.description
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <Check className="h-5 w-5 text-primary shrink-0" />
+                        )}
+                      </motion.button>
+                    );
+                  })}
                 </div>
 
                 <p className="text-xs text-muted-foreground text-center">
-                  Selected: {creation.selectedChains.length} chain
-                  {creation.selectedChains.length !== 1 ? "s" : ""}
+                  Selected: {creation.selectedFamilies.length} network
+                  {creation.selectedFamilies.length !== 1 ? "s" : ""}{" "}
+                  ({creation.selectedChains.length} chain
+                  {creation.selectedChains.length !== 1 ? "s" : ""})
                 </p>
               </div>
             )}
@@ -605,9 +610,7 @@ Delete this file after writing down the words.`;
                         className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border"
                       >
                         <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center">
-                          {chainIcons[addr.chain] || (
-                            <Circle className="h-4 w-4" />
-                          )}
+                          <ChainIcon chainId={addr.chain} size={16} variant="branded" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium">

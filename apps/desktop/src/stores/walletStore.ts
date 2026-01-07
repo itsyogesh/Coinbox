@@ -2,6 +2,7 @@
  * Wallet Store - Zustand state management for wallet operations
  *
  * Manages HD wallets, derived addresses, and wallet session state.
+ * Uses family-based chain selection (Bitcoin, Ethereum, etc.)
  */
 
 import { create } from "zustand";
@@ -18,6 +19,10 @@ import {
   unlockWallet,
 } from "@/lib/tauri/wallet";
 import { initBitcoinFromCachedSeed, createBitcoinWatchWallet } from "@/lib/tauri/bitcoin";
+import {
+  type ChainFamily,
+  getEnabledChainsByFamily,
+} from "@/lib/chains";
 
 // =============================================================================
 // Types
@@ -50,7 +55,10 @@ export type WalletCreationStep =
 export interface WalletCreationState {
   step: WalletCreationStep;
   walletName: string;
+  /** @deprecated Use selectedFamilies instead */
   selectedChains: string[];
+  /** Selected chain families (bitcoin, evm, solana) */
+  selectedFamilies: ChainFamily[];
   password: string;
   mnemonic: string | null;
   mnemonicVerified: boolean;
@@ -93,7 +101,10 @@ interface WalletState {
   startCreation: () => void;
   setCreationStep: (step: WalletCreationStep) => void;
   setWalletName: (name: string) => void;
+  /** @deprecated Use toggleFamilySelection instead */
   toggleChainSelection: (chainId: string) => void;
+  /** Toggle selection of a chain family (e.g., 'bitcoin', 'evm') */
+  toggleFamilySelection: (family: ChainFamily) => void;
   setPassword: (password: string) => void;
   createWallet: () => Promise<void>;
   verifyMnemonicWord: (index: number, word: string) => boolean;
@@ -114,7 +125,8 @@ interface WalletState {
 const initialCreationState: WalletCreationState = {
   step: "select-chains",
   walletName: "",
-  selectedChains: [],
+  selectedChains: [], // Deprecated, kept for compatibility
+  selectedFamilies: [],
   password: "",
   mnemonic: null,
   mnemonicVerified: false,
@@ -122,6 +134,19 @@ const initialCreationState: WalletCreationState = {
   derivedAddresses: [],
   error: null,
 };
+
+/**
+ * Convert selected families to chain IDs for backend compatibility.
+ * The backend expects individual chain IDs, not families.
+ */
+function familiesToChainIds(families: ChainFamily[]): string[] {
+  const chainIds: string[] = [];
+  for (const family of families) {
+    const enabledChains = getEnabledChainsByFamily(family);
+    chainIds.push(...enabledChains.map(c => c.id));
+  }
+  return chainIds;
+}
 
 // =============================================================================
 // Store
@@ -223,6 +248,7 @@ export const useWalletStore = create<WalletState>()(
         },
 
         toggleChainSelection: (chainId) => {
+          // Deprecated: kept for backward compatibility
           set((state) => {
             const selected = state.creation.selectedChains;
             const newSelected = selected.includes(chainId)
@@ -230,6 +256,24 @@ export const useWalletStore = create<WalletState>()(
               : [...selected, chainId];
             return {
               creation: { ...state.creation, selectedChains: newSelected },
+            };
+          });
+        },
+
+        toggleFamilySelection: (family) => {
+          set((state) => {
+            const selected = state.creation.selectedFamilies;
+            const newSelected = selected.includes(family)
+              ? selected.filter((f) => f !== family)
+              : [...selected, family];
+            // Also update selectedChains for backward compatibility
+            const chainIds = familiesToChainIds(newSelected);
+            return {
+              creation: {
+                ...state.creation,
+                selectedFamilies: newSelected,
+                selectedChains: chainIds,
+              },
             };
           });
         },

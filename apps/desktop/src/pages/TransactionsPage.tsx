@@ -13,11 +13,11 @@ import {
   Search,
   Filter,
   Download,
-  Bitcoin,
   ExternalLink,
   CheckCircle2,
   Clock,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { pageTransition, staggerContainer, staggerItem } from "@/lib/animations";
@@ -213,7 +213,7 @@ export default function TransactionsPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium capitalize">{tx.type}</span>
-                      <Bitcoin className="h-3.5 w-3.5 text-orange-500" />
+                      <ChainIcon chainId={tx.chain} size={14} variant="branded" />
                       {tx.status === "confirmed" ? (
                         <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                       ) : (

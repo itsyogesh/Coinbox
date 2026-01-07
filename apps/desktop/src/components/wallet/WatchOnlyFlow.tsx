@@ -14,11 +14,9 @@ import {
   ArrowRight,
   Check,
   Eye,
-  Bitcoin,
-  Hexagon,
-  Circle,
   AlertCircle,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import {
   Dialog,
@@ -77,20 +75,6 @@ const itemVariants = {
       damping: 24,
     },
   }),
-};
-
-// =============================================================================
-// Chain Icons
-// =============================================================================
-
-const chainIcons: Record<string, React.ReactNode> = {
-  bitcoin: <Bitcoin className="h-5 w-5 text-orange-500" />,
-  ethereum: <Hexagon className="h-5 w-5 text-blue-500" />,
-  arbitrum: <Circle className="h-5 w-5 text-blue-400" />,
-  optimism: <Circle className="h-5 w-5 text-red-500" />,
-  base: <Circle className="h-5 w-5 text-blue-600" />,
-  polygon: <Circle className="h-5 w-5 text-purple-500" />,
-  solana: <Circle className="h-5 w-5 text-teal-500" />,
 };
 
 // =============================================================================
@@ -274,9 +258,7 @@ export function WatchOnlyFlow({ open, onOpenChange }: WatchOnlyFlowProps) {
                       )}
                     >
                       <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
-                        {chainIcons[chain.id] || (
-                          <Circle className="h-5 w-5 text-muted-foreground" />
-                        )}
+                        <ChainIcon chainId={chain.id} size={20} variant="branded" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{chain.name}</div>
@@ -298,9 +280,7 @@ export function WatchOnlyFlow({ open, onOpenChange }: WatchOnlyFlowProps) {
               <div className="space-y-6">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2">
-                    {chainIcons[state.selectedChain!] || (
-                      <Circle className="h-5 w-5 text-primary" />
-                    )}
+                    <ChainIcon chainId={state.selectedChain || "ethereum"} size={20} variant="branded" />
                     Enter {selectedChainInfo?.name} Address
                   </DialogTitle>
                   <DialogDescription>
@@ -395,9 +375,7 @@ export function WatchOnlyFlow({ open, onOpenChange }: WatchOnlyFlowProps) {
                 <div className="p-4 rounded-lg bg-muted/50 border">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-background flex items-center justify-center">
-                      {chainIcons[state.selectedChain!] || (
-                        <Circle className="h-5 w-5" />
-                      )}
+                      <ChainIcon chainId={state.selectedChain || "ethereum"} size={20} variant="branded" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-medium">{state.walletName}</div>

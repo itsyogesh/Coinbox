@@ -6,12 +6,12 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Bitcoin,
   Copy,
   Check,
   Download,
   ExternalLink,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import { cn, copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -100,7 +100,7 @@ export function ReceiveBitcoinDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bitcoin className="h-5 w-5 text-orange-500" />
+            <ChainIcon chainId="bitcoin" size={20} variant="branded" />
             Receive Bitcoin
           </DialogTitle>
           <DialogDescription>

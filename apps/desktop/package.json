@@ -29,6 +29,7 @@
     "@tanstack/react-query": "^5.62.0",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-store": "^2.2.0",
+    "@web3icons/react": "^4.1.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

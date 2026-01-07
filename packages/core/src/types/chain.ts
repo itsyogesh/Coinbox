@@ -1,7 +1,18 @@
 /**
  * Blockchain chain definitions
+ *
+ * @deprecated Use the new chain registry instead: `import { CHAINS, getChain } from '@coinbox/core/chains'`
+ * This file is kept for backward compatibility but will be removed in a future version.
+ *
+ * Migration guide:
+ * - `Chain.Ethereum` → `'ethereum'` (string IDs)
+ * - `CHAIN_CONFIGS[Chain.Ethereum]` → `getChain('ethereum')`
+ * - `isEVMChain(chain)` → `getFamilyForChain(chainId) === 'evm'`
  */
 
+/**
+ * @deprecated Use string chain IDs from the registry instead
+ */
 export enum Chain {
   Bitcoin = 'bitcoin',
   Ethereum = 'ethereum',

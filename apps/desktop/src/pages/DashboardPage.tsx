@@ -11,14 +11,16 @@ import {
   Plus,
   ArrowRight,
   Sparkles,
-  Bitcoin,
   RefreshCw,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useWalletStore } from "@/stores/walletStore";
 import { useBitcoinStore } from "@/stores/bitcoinStore";
+import { useEthereumStore } from "@/stores/ethereumStore";
 import { formatBtc, satsToBtc } from "@/lib/tauri/bitcoin";
+import { formatEther } from "@/lib/viem";
 
 // Animation variants
 const containerVariants = {
@@ -48,16 +50,25 @@ const itemVariants = {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { wallets } = useWalletStore();
-  const { getWalletState, fetchPrice, price, walletStates } = useBitcoinStore();
+  const { getWalletState, fetchPrice: fetchBtcPrice, price: btcPrice, walletStates } = useBitcoinStore();
+  const {
+    wallets: ethWallets,
+    fetchPrice: fetchEthPrice,
+    price: ethPrice,
+    getTotalBalanceUsd: getEthTotalUsd,
+  } = useEthereumStore();
 
-  // Fetch BTC price on mount
+  // Fetch prices on mount
   useEffect(() => {
-    if (!price.btcUsd) {
-      fetchPrice();
+    if (!btcPrice.btcUsd) {
+      fetchBtcPrice();
     }
-  }, [price.btcUsd, fetchPrice]);
+    if (!ethPrice.prices["ethereum"]) {
+      fetchEthPrice();
+    }
+  }, [btcPrice.btcUsd, fetchBtcPrice, ethPrice.prices, fetchEthPrice]);
 
-  // Calculate portfolio values from all Bitcoin wallets
+  // Calculate portfolio values from all wallets (BTC + ETH)
   const portfolioData = useMemo(() => {
     let totalSats = 0;
     let totalTransactions = 0;
@@ -76,26 +87,73 @@ export default function DashboardPage() {
     });
 
     const totalBtc = satsToBtc(totalSats);
-    const totalUsd = price.btcUsd ? totalBtc * price.btcUsd : null;
+    const btcUsdValue = btcPrice.btcUsd ? totalBtc * btcPrice.btcUsd : 0;
+
+    // Get all wallets with Ethereum addresses
+    const ethWalletsList = wallets.filter((w) =>
+      w.addresses.some((a) => a.chain === "ethereum")
+    );
+
+    // Calculate total ETH holdings across all wallets and chains
+    let totalEthWei = BigInt(0);
+    let ethUsdValue = 0;
+
+    ethWalletsList.forEach((wallet) => {
+      const ethWalletState = ethWallets[wallet.id];
+      if (ethWalletState) {
+        // Sum native ETH balances across all EVM chains
+        (["ethereum", "arbitrum", "optimism", "base"] as const).forEach((chainId) => {
+          const chainBalance = ethWalletState[chainId]?.balance;
+          if (chainBalance?.wei) {
+            totalEthWei += BigInt(chainBalance.wei);
+          }
+        });
+        // Get total USD value including tokens
+        ethUsdValue += getEthTotalUsd(wallet.id);
+      }
+    });
+
+    const totalEth = parseFloat(formatEther(totalEthWei));
+    const totalUsd = btcUsdValue + ethUsdValue;
 
     return {
+      // BTC data
       totalSats,
       totalBtc,
-      totalUsd,
+      btcUsdValue,
       btcWalletCount: btcWallets.length,
+      // ETH data
+      totalEthWei,
+      totalEth,
+      ethUsdValue,
+      ethWalletCount: ethWalletsList.length,
+      // Combined
+      totalUsd,
       transactionCount: totalTransactions,
     };
-  }, [wallets, walletStates, price.btcUsd, getWalletState]);
+  }, [wallets, walletStates, btcPrice.btcUsd, getWalletState, ethWallets, ethPrice.prices, getEthTotalUsd]);
 
-  // Check if any wallet is syncing
+  // Check if any wallet is syncing (BTC or ETH)
   const isSyncing = useMemo(() => {
-    return wallets.some((w) => {
+    // Check BTC wallets
+    const btcSyncing = wallets.some((w) => {
       const state = getWalletState(w.id);
       return state.isSyncing;
     });
-  }, [wallets, walletStates, getWalletState]);
 
-  const portfolioValue = portfolioData.totalUsd ?? 0;
+    // Check ETH wallets
+    const ethSyncing = wallets.some((w) => {
+      const ethWalletState = ethWallets[w.id];
+      if (!ethWalletState) return false;
+      return (["ethereum", "arbitrum", "optimism", "base", "polygon"] as const).some(
+        (chainId) => ethWalletState[chainId]?.isSyncing
+      );
+    });
+
+    return btcSyncing || ethSyncing;
+  }, [wallets, walletStates, getWalletState, ethWallets]);
+
+  const portfolioValue = portfolioData.totalUsd;
   const change24h = 0; // TODO: Implement 24h change tracking
   const changePercent = 0; // TODO: Implement percentage change
   const walletCount = wallets.length;
@@ -143,15 +201,25 @@ export default function DashboardPage() {
                     })}
                   </h2>
 
-                  {/* BTC Holdings */}
-                  {portfolioData.totalSats > 0 && (
-                    <div className="flex items-center gap-2 text-lg text-muted-foreground">
-                      <Bitcoin className="h-4 w-4 text-orange-500" />
-                      <span className="font-mono tabular-nums">
-                        {formatBtc(portfolioData.totalSats, 8)} BTC
-                      </span>
-                    </div>
-                  )}
+                  {/* Holdings Summary */}
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                    {portfolioData.totalSats > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <ChainIcon chainId="bitcoin" size={14} variant="branded" />
+                        <span className="font-mono tabular-nums">
+                          {formatBtc(portfolioData.totalSats, 8)} BTC
+                        </span>
+                      </div>
+                    )}
+                    {portfolioData.totalEth > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <ChainIcon chainId="ethereum" size={14} variant="branded" />
+                        <span className="font-mono tabular-nums">
+                          {portfolioData.totalEth.toFixed(6)} ETH
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-3">
                     <span
@@ -266,41 +334,69 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {portfolioData.totalSats > 0 ? (
+            {(portfolioData.totalSats > 0 || portfolioData.totalEth > 0) ? (
               <div className="space-y-3">
                 {/* Bitcoin Asset */}
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
-                  <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
-                    <Bitcoin className="h-6 w-6 text-orange-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">Bitcoin</span>
-                      <span className="text-xs text-muted-foreground">BTC</span>
+                {portfolioData.totalSats > 0 && (
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-orange-500/5 border border-orange-500/10">
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <ChainIcon chainId="bitcoin" size={24} variant="branded" />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {portfolioData.btcWalletCount} wallet{portfolioData.btcWalletCount !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono font-medium tabular-nums">
-                      {formatBtc(portfolioData.totalSats, 8)} BTC
-                    </p>
-                    {portfolioData.totalUsd !== null && (
-                      <p className="text-sm text-muted-foreground tabular-nums">
-                        ${portfolioData.totalUsd.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Bitcoin</span>
+                        <span className="text-xs text-muted-foreground">BTC</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {portfolioData.btcWalletCount} wallet{portfolioData.btcWalletCount !== 1 ? "s" : ""}
                       </p>
-                    )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-medium tabular-nums">
+                        {formatBtc(portfolioData.totalSats, 8)} BTC
+                      </p>
+                      {portfolioData.btcUsdValue > 0 && (
+                        <p className="text-sm text-muted-foreground tabular-nums">
+                          ${portfolioData.btcUsdValue.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Placeholder for more assets */}
-                <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                  <p>More chains coming soon</p>
-                </div>
+                {/* Ethereum Asset */}
+                {portfolioData.ethWalletCount > 0 && (
+                  <div className="flex items-center gap-4 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                      <ChainIcon chainId="ethereum" size={24} variant="branded" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Ethereum</span>
+                        <span className="text-xs text-muted-foreground">ETH</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {portfolioData.ethWalletCount} wallet{portfolioData.ethWalletCount !== 1 ? "s" : ""} • Includes tokens
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono font-medium tabular-nums">
+                        {portfolioData.totalEth.toFixed(6)} ETH
+                      </p>
+                      {portfolioData.ethUsdValue > 0 && (
+                        <p className="text-sm text-muted-foreground tabular-nums">
+                          ${portfolioData.ethUsdValue.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* Empty state */

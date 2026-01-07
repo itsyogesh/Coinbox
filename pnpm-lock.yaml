@@ -52,6 +52,9 @@ importers:
       '@tauri-apps/plugin-store':
         specifier: ^2.2.0
         version: 2.4.1
+      '@web3icons/react':
+        specifier: ^4.1.12
+        version: 4.1.12(react@18.3.1)(typescript@5.9.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1197,6 +1200,16 @@ packages:
     engines: {node: ^14.18.0 || >=16.0.0}
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
+
+  '@web3icons/common@0.11.41':
+    resolution: {integrity: sha512-xsFldLiEE+2HEScvy7D3PAG65ZKmEVo4twfdfisjcn+8TdEG1wPKDDtsfN9kEaS4OkJMYC0QlXrx5ssbebI0ww==}
+    peerDependencies:
+      typescript: ^5.0.0
+
+  '@web3icons/react@4.1.12':
+    resolution: {integrity: sha512-pKFv+5RV34hTPa+5EYQQY3+vhKmOh3xzaNJYoifVQW59FUcvlAzReI2f9tiVVAgkhQEOGPbfNY/FTsZRzCuiYg==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -3137,6 +3150,17 @@ snapshots:
       vite: 6.4.1(@types/node@22.19.3)(jiti@1.21.7)
     transitivePeerDependencies:
       - supports-color
+
+  '@web3icons/common@0.11.41(typescript@5.9.3)':
+    dependencies:
+      typescript: 5.9.3
+
+  '@web3icons/react@4.1.12(react@18.3.1)(typescript@5.9.3)':
+    dependencies:
+      '@web3icons/common': 0.11.41(typescript@5.9.3)
+      react: 18.3.1
+    transitivePeerDependencies:
+      - typescript
 
   abitype@1.2.3(typescript@5.9.3):
     optionalDependencies:

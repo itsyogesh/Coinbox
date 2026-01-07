@@ -37,6 +37,10 @@ pub fn run() {
             let bitcoin_state = commands::BitcoinState::new(data_dir);
             app.manage(bitcoin_state);
 
+            // Initialize Ethereum state (uses WalletManager for signing)
+            let ethereum_state = commands::EthereumState::new(wallet::WalletManager::new());
+            app.manage(ethereum_state);
+
             // Open devtools in debug builds
             #[cfg(debug_assertions)]
             {
@@ -102,6 +106,12 @@ pub fn run() {
             commands::save_transaction,
             commands::save_transactions,
             commands::delete_wallet_transactions,
+            // Ethereum commands (Sprint 7-8)
+            commands::ethereum_sign_message,
+            commands::ethereum_sign_typed_data,
+            commands::ethereum_sign_transaction_hash,
+            commands::ethereum_get_address,
+            commands::ethereum_validate_address,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

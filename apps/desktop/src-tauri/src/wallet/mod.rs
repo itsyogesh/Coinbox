@@ -45,6 +45,7 @@ pub mod types;
 // Re-export commonly used items
 pub use bitcoin::{BitcoinAdapter, BitcoinBalance, BitcoinConfig, BitcoinNetwork, BitcoinTransaction};
 pub use chains::{BitcoinModule, ChainModule, EthereumModule, SolanaModule};
+pub use core::WalletManager;
 pub use error::{WalletError, WalletResult};
 pub use mnemonic::{generate_mnemonic, mnemonic_to_seed, parse_mnemonic, validate_mnemonic, MnemonicLength};
 pub use types::{

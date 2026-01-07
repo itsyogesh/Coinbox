@@ -22,12 +22,10 @@ import {
   X,
   Wallet,
   Eye,
-  Bitcoin,
-  Hexagon,
-  Circle,
   AlertTriangle,
   Shield,
 } from "lucide-react";
+import { ChainIcon } from "@/components/ui/crypto-icon";
 
 import { cn, copyToClipboard } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -43,6 +41,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useWalletStore } from "@/stores/walletStore";
 import { useBitcoinStore } from "@/stores/bitcoinStore";
 import { BitcoinBalanceCard, BitcoinTransactionList, ReceiveBitcoinDialog, SendBitcoinDialog } from "@/components/bitcoin";
+import { EthereumBalanceCard, ReceiveEthereumDialog } from "@/components/ethereum";
+import type { Address } from "viem";
 
 // Animation variants
 const containerVariants = {
@@ -69,17 +69,6 @@ const itemVariants = {
   },
 };
 
-// Chain icons lookup
-const chainIcons: Record<string, React.ReactNode> = {
-  bitcoin: <Bitcoin className="h-5 w-5 text-orange-500" />,
-  ethereum: <Hexagon className="h-5 w-5 text-blue-500" />,
-  arbitrum: <Circle className="h-5 w-5 text-blue-400" />,
-  optimism: <Circle className="h-5 w-5 text-red-500" />,
-  base: <Circle className="h-5 w-5 text-blue-600" />,
-  polygon: <Circle className="h-5 w-5 text-purple-500" />,
-  solana: <Circle className="h-5 w-5 text-teal-500" />,
-};
-
 const chainColors: Record<string, { text: string; bg: string }> = {
   bitcoin: { text: "text-orange-500", bg: "bg-orange-500/10" },
   ethereum: { text: "text-blue-500", bg: "bg-blue-500/10" },
@@ -104,6 +93,7 @@ export default function WalletDetailsPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showReceiveDialog, setShowReceiveDialog] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showEthReceiveDialog, setShowEthReceiveDialog] = useState(false);
 
   // Get Bitcoin balance for send dialog
   const { getWalletState } = useBitcoinStore();
@@ -412,6 +402,55 @@ export default function WalletDetailsPage() {
           );
         })()}
 
+        {/* Ethereum Section - Show if wallet has Ethereum address */}
+        {wallet.addresses.some((addr) => addr.chain === "ethereum") && (() => {
+          const ethAddress = wallet.addresses.find((addr) => addr.chain === "ethereum");
+          if (!ethAddress) return null;
+
+          return (
+            <>
+              <motion.section variants={itemVariants} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-heading font-semibold">Ethereum</h2>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => setShowEthReceiveDialog(true)}
+                    >
+                      <ArrowDownLeft className="h-4 w-4" />
+                      Receive
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={wallet.type === "watch_only"}
+                      title={wallet.type === "watch_only" ? "Watch-only wallets cannot send" : "Coming soon"}
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                      Send
+                    </Button>
+                  </div>
+                </div>
+                <EthereumBalanceCard
+                  walletId={wallet.id}
+                  address={ethAddress.address as Address}
+                />
+              </motion.section>
+
+              {/* Receive Ethereum Dialog */}
+              <ReceiveEthereumDialog
+                open={showEthReceiveDialog}
+                onOpenChange={setShowEthReceiveDialog}
+                address={ethAddress.address}
+                walletName={wallet.name}
+              />
+            </>
+          );
+        })()}
+
         {/* Addresses */}
         <motion.section variants={itemVariants} className="space-y-4">
           <h2 className="text-lg font-heading font-semibold">Addresses</h2>
@@ -437,9 +476,7 @@ export default function WalletDetailsPage() {
                         colors.bg
                       )}
                     >
-                      {chainIcons[addr.chain] || (
-                        <Circle className={cn("h-6 w-6", colors.text)} />
-                      )}
+                      <ChainIcon chainId={addr.chain} size={24} variant="branded" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
