@@ -88,6 +88,12 @@ export default function SettingsPage() {
     "idle" | "testing" | "valid" | "invalid"
   >("idle");
 
+  // Etherscan API key state
+  const [etherscanKeyInput, setEtherscanKeyInput] = useState(apiKeys.etherscan || "");
+  const [etherscanKeyStatus, setEtherscanKeyStatus] = useState<
+    "idle" | "saved"
+  >("idle");
+
   // Handle theme change with immediate visual feedback
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
@@ -149,6 +155,14 @@ export default function SettingsPage() {
         [chain]: { value: field.value, status: "error" as const, error: result.error },
       }));
     }
+  };
+
+  // Save Etherscan API key
+  const saveEtherscanKey = () => {
+    setApiKey("etherscan", etherscanKeyInput.trim());
+    setEtherscanKeyStatus("saved");
+    // Reset status after 2 seconds
+    setTimeout(() => setEtherscanKeyStatus("idle"), 2000);
   };
 
   // Verify API key (placeholder - would need actual verification)
@@ -452,6 +466,69 @@ export default function SettingsPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Block Explorer APIs */}
+      <motion.section variants={itemVariants} className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Key className="h-4 w-4 text-primary" />
+          </div>
+          <h2 className="text-lg font-heading font-semibold">
+            Block Explorer APIs
+          </h2>
+        </div>
+
+        <div className="card-premium p-6 space-y-5">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Etherscan API Key</label>
+              <a
+                href="https://etherscan.io/apis"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                Get free API key
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Required for fetching transaction history on Ethereum and L2s
+            </p>
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <input
+                  type="password"
+                  placeholder="Enter your Etherscan API key"
+                  value={etherscanKeyInput}
+                  onChange={(e) => {
+                    setEtherscanKeyInput(e.target.value);
+                    setEtherscanKeyStatus("idle");
+                  }}
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                />
+                {etherscanKeyStatus === "saved" && (
+                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />
+                )}
+              </div>
+              <Button
+                variant="outline"
+                onClick={saveEtherscanKey}
+                disabled={etherscanKeyStatus === "saved"}
+              >
+                {etherscanKeyStatus === "saved" ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              One API key works for Ethereum, Arbitrum, Optimism, Base, and Polygon via Etherscan V2 API.
+            </p>
           </div>
         </div>
       </motion.section>

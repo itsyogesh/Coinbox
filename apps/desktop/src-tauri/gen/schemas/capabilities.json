@@ -1,1 +1,1 @@
-{}
+{"default":{"identifier":"default","description":"Default capabilities for Coinbox","local":true,"windows":["main"],"permissions":["core:default","shell:allow-open","stronghold:default"]}}

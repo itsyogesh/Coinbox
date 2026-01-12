@@ -1,7 +1,9 @@
 /**
  * TransactionsPage - Unified transaction history across all chains
  *
- * Aggregates transactions from chainStore (SQLite-backed).
+ * Aggregates transactions from:
+ * - chainStore (SQLite-backed) for Bitcoin
+ * - ethereumStore (Etherscan API) for EVM chains
  */
 
 import { useMemo } from "react";
@@ -22,22 +24,39 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { pageTransition, staggerContainer, staggerItem } from "@/lib/animations";
 import { useChainStore } from "@/stores/chainStore";
+import { useEthereumStore, type EthereumTransaction } from "@/stores/ethereumStore";
 import { useWalletStore } from "@/stores/walletStore";
 import { cn } from "@/lib/utils";
+import type { EVMChainId } from "@/lib/viem";
 
 interface UnifiedTransaction {
   id: string;
-  chain: "bitcoin" | "ethereum";
-  type: "received" | "sent" | "internal";
+  chain: "bitcoin" | EVMChainId;
+  type: "received" | "sent" | "internal" | "contract" | "self";
   amount: string;
   amountRaw: number;
   asset: string;
   timestamp: number | null;
-  status: "confirmed" | "pending";
+  status: "confirmed" | "pending" | "failed" | "success";
   txid: string;
   walletId: string;
   walletName: string;
+  // EVM-specific: token transfer info
+  tokenTransfer?: {
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
 }
+
+// EVM chain explorer URLs
+const evmExplorers: Record<EVMChainId, string> = {
+  ethereum: "https://etherscan.io/tx/",
+  arbitrum: "https://arbiscan.io/tx/",
+  optimism: "https://optimistic.etherscan.io/tx/",
+  base: "https://basescan.org/tx/",
+  polygon: "https://polygonscan.com/tx/",
+};
 
 export default function TransactionsPage() {
   const { wallets } = useWalletStore();
@@ -45,10 +64,14 @@ export default function TransactionsPage() {
   const prices = useChainStore((s) => s.prices);
   const btcPrice = prices["BTC"]?.price_usd ?? null;
 
-  // Flatten transactions from all wallets
-  const allTransactions = useMemo(() => {
+  // Get Ethereum store wallets
+  const ethWallets = useEthereumStore((s) => s.wallets);
+  const ethPriceState = useEthereumStore((s) => s.price);
+  const ethPrice = ethPriceState.prices["ethereum"] ?? null;
+
+  // Flatten Bitcoin transactions from chainStore
+  const allBtcTransactions = useMemo(() => {
     const allTxs = Object.values(transactions).flat();
-    // Sort by timestamp descending
     return allTxs.sort((a, b) => {
       const timeA = new Date(a.timestamp).getTime();
       const timeB = new Date(b.timestamp).getTime();
@@ -56,44 +79,128 @@ export default function TransactionsPage() {
     });
   }, [transactions]);
 
+  // Flatten Ethereum transactions from ethereumStore
+  const allEthTransactions = useMemo((): { tx: EthereumTransaction; walletId: string }[] => {
+    const result: { tx: EthereumTransaction; walletId: string }[] = [];
+
+    for (const [walletId, walletState] of Object.entries(ethWallets)) {
+      if (!walletState) continue;
+      const evmChains: EVMChainId[] = ["ethereum", "arbitrum", "optimism", "base", "polygon"];
+
+      for (const chainId of evmChains) {
+        const chainState = walletState[chainId];
+        if (chainState?.transactions) {
+          for (const tx of chainState.transactions) {
+            result.push({ tx, walletId });
+          }
+        }
+      }
+    }
+
+    return result.sort((a, b) => b.tx.timestamp - a.tx.timestamp);
+  }, [ethWallets]);
+
   // Map chainStore transactions to UnifiedTransaction format
   const unifiedTransactions = useMemo((): UnifiedTransaction[] => {
-    return allTransactions.map((tx) => {
-      // Find wallet name
+    const unified: UnifiedTransaction[] = [];
+
+    // Format BTC amount
+    const formatBtc = (sats: number) => {
+      const btc = Math.abs(sats) / 100_000_000;
+      return btc.toFixed(8);
+    };
+
+    // Add Bitcoin transactions
+    for (const tx of allBtcTransactions) {
       const wallet = wallets.find((w) => w.id === tx.wallet_id);
       const walletName = wallet?.name ?? "Unknown";
-
-      // Parse amount (stored as sats string)
       const amountSats = parseInt(tx.amount, 10) || 0;
-
-      // Format BTC amount
-      const formatBtc = (sats: number) => {
-        const btc = Math.abs(sats) / 100_000_000;
-        return btc.toFixed(8);
-      };
-
-      // Parse timestamp
       const timestamp = tx.timestamp ? new Date(tx.timestamp).getTime() / 1000 : null;
 
-      return {
+      unified.push({
         id: tx.id,
-        chain: tx.chain as "bitcoin" | "ethereum",
+        chain: "bitcoin",
         type: tx.tx_type as "received" | "sent" | "internal",
         amount: formatBtc(amountSats),
         amountRaw: amountSats,
         asset: tx.asset_symbol,
         timestamp,
-        status: tx.block_number ? "confirmed" : "pending" as "confirmed" | "pending",
+        status: tx.block_number ? "confirmed" : "pending",
         txid: tx.tx_hash,
         walletId: tx.wallet_id,
         walletName,
-      };
-    });
-  }, [allTransactions, wallets]);
+      });
+    }
+
+    // Add Ethereum transactions
+    for (const { tx, walletId } of allEthTransactions) {
+      const wallet = wallets.find((w) => w.id === walletId);
+      const walletName = wallet?.name ?? "Unknown";
+
+      // Determine type and amount
+      let type: UnifiedTransaction["type"];
+      if (tx.direction === "receive") type = "received";
+      else if (tx.direction === "send") type = "sent";
+      else if (tx.direction === "self") type = "self";
+      else type = "contract";
+
+      let amount: string;
+      let asset: string;
+      let amountRaw: number;
+      let tokenTransfer: UnifiedTransaction["tokenTransfer"] | undefined;
+
+      if (tx.tokenTransfer) {
+        // Token transfer
+        const tokenValue = parseFloat(tx.tokenTransfer.value) / Math.pow(10, tx.tokenTransfer.decimals);
+        amount = tokenValue.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 6,
+        });
+        asset = tx.tokenTransfer.symbol;
+        amountRaw = parseFloat(tx.tokenTransfer.value);
+        tokenTransfer = {
+          symbol: tx.tokenTransfer.symbol,
+          name: tx.tokenTransfer.name,
+          decimals: tx.tokenTransfer.decimals,
+        };
+      } else {
+        // Native transfer
+        const valueEth = parseFloat(tx.value) / 1e18;
+        amount = valueEth.toLocaleString(undefined, {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 6,
+        });
+        asset = tx.chainId === "polygon" ? "POL" : "ETH";
+        amountRaw = parseFloat(tx.value);
+      }
+
+      unified.push({
+        id: tx.hash,
+        chain: tx.chainId,
+        type,
+        amount,
+        amountRaw,
+        asset,
+        timestamp: tx.timestamp,
+        status: tx.status,
+        txid: tx.hash,
+        walletId,
+        walletName,
+        tokenTransfer,
+      });
+    }
+
+    // Sort all by timestamp descending
+    unified.sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
+
+    return unified;
+  }, [allBtcTransactions, allEthTransactions, wallets]);
 
   const openInExplorer = (chain: string, txid: string) => {
     if (chain === "bitcoin") {
       window.open(`https://mempool.space/tx/${txid}`, "_blank");
+    } else if (chain in evmExplorers) {
+      window.open(`${evmExplorers[chain as EVMChainId]}${txid}`, "_blank");
     }
   };
 
@@ -173,12 +280,40 @@ export default function TransactionsPage() {
           >
             {unifiedTransactions.map((tx) => {
               const isReceived = tx.type === "received";
-              const isInternal = tx.type === "internal";
+              const isSelfOrContract = tx.type === "self" || tx.type === "contract" || tx.type === "internal";
+              const isFailed = tx.status === "failed";
+              const isTokenTransfer = !!tx.tokenTransfer;
+
               const Icon = isReceived
                 ? ArrowDownLeft
-                : isInternal
+                : isSelfOrContract
                 ? ArrowLeftRight
                 : ArrowUpRight;
+
+              // Determine amount prefix based on type
+              const amountPrefix = isReceived ? "+" : isSelfOrContract ? "" : "-";
+
+              // Calculate USD value based on chain
+              let usdValue: string | null = null;
+              if (tx.chain === "bitcoin" && btcPrice) {
+                usdValue = ((Math.abs(tx.amountRaw) / 100_000_000) * btcPrice).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+              } else if (tx.chain !== "bitcoin" && ethPrice && !isTokenTransfer) {
+                // Native ETH/POL transfer
+                usdValue = ((Math.abs(tx.amountRaw) / 1e18) * ethPrice).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                });
+              }
+
+              // Type label for display
+              const typeLabel = isTokenTransfer
+                ? isReceived
+                  ? "Received Token"
+                  : "Sent Token"
+                : tx.type.charAt(0).toUpperCase() + tx.type.slice(1);
 
               return (
                 <motion.div
@@ -186,13 +321,15 @@ export default function TransactionsPage() {
                   variants={staggerItem}
                   className="group card-premium p-4 flex items-center gap-4"
                 >
-                  {/* Chain Icon */}
+                  {/* Direction Icon */}
                   <div
                     className={cn(
                       "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                      isReceived
+                      isFailed
+                        ? "bg-destructive/10"
+                        : isReceived
                         ? "bg-success/10"
-                        : isInternal
+                        : isSelfOrContract
                         ? "bg-muted"
                         : "bg-orange-500/10"
                     )}
@@ -200,9 +337,11 @@ export default function TransactionsPage() {
                     <Icon
                       className={cn(
                         "h-5 w-5",
-                        isReceived
+                        isFailed
+                          ? "text-destructive"
+                          : isReceived
                           ? "text-success"
-                          : isInternal
+                          : isSelfOrContract
                           ? "text-muted-foreground"
                           : "text-orange-500"
                       )}
@@ -212,9 +351,11 @@ export default function TransactionsPage() {
                   {/* Transaction Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium capitalize">{tx.type}</span>
+                      <span className="font-medium">{typeLabel}</span>
                       <ChainIcon chainId={tx.chain} size={14} variant="branded" />
-                      {tx.status === "confirmed" ? (
+                      {isFailed ? (
+                        <span className="text-xs text-destructive">Failed</span>
+                      ) : tx.status === "confirmed" || tx.status === "success" ? (
                         <CheckCircle2 className="h-3.5 w-3.5 text-success" />
                       ) : (
                         <Clock className="h-3.5 w-3.5 text-warning" />
@@ -222,6 +363,9 @@ export default function TransactionsPage() {
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
                       {tx.walletName}
+                      {tx.tokenTransfer && (
+                        <span className="ml-1 text-xs">• {tx.tokenTransfer.name}</span>
+                      )}
                     </p>
                   </div>
 
@@ -230,22 +374,19 @@ export default function TransactionsPage() {
                     <p
                       className={cn(
                         "font-mono font-medium tabular-nums",
-                        isReceived ? "text-success" : "text-foreground"
+                        isFailed
+                          ? "text-muted-foreground line-through"
+                          : isReceived
+                          ? "text-success"
+                          : "text-foreground"
                       )}
                     >
-                      {isReceived ? "+" : "-"}
+                      {amountPrefix}
                       {tx.amount} {tx.asset}
                     </p>
-                    {btcPrice && (
+                    {usdValue && !isFailed && (
                       <p className="font-mono text-xs text-muted-foreground tabular-nums">
-                        $
-                        {(
-                          (Math.abs(tx.amountRaw) / 100_000_000) *
-                          btcPrice
-                        ).toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        ${usdValue}
                       </p>
                     )}
                   </div>

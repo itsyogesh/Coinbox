@@ -151,10 +151,6 @@ importers:
         version: 5.9.3
 
   packages/core:
-    dependencies:
-      '@coinbox/chains':
-        specifier: workspace:*
-        version: link:../chains
     devDependencies:
       typescript:
         specifier: ^5.7.2

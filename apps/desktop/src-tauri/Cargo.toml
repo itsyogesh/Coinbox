@@ -26,6 +26,9 @@ rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
+# HTTP client for API calls (Etherscan, etc.)
+reqwest = { version = "0.12", features = ["json"] }
+
 # Error handling
 thiserror = "1"
 anyhow = "1"

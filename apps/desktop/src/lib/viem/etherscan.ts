@@ -1,12 +1,16 @@
 /**
- * Etherscan API Service
+ * Etherscan API Service (V2)
  *
- * Fetches transaction history from Etherscan-compatible APIs.
- * Supports Ethereum mainnet and L2 block explorers.
+ * Fetches transaction history from Etherscan V2 unified API.
+ * Uses Tauri command to bypass CORS restrictions.
+ *
+ * @see https://docs.etherscan.io/v2-migration
  */
 
+import { invoke } from "@tauri-apps/api/core";
 import { getChain, type EVMChainId } from "@coinbox/chains";
 import type { Address } from "viem";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 // ============================================================================
 // Types
@@ -14,37 +18,37 @@ import type { Address } from "viem";
 
 interface EtherscanTx {
   hash: string;
-  blockNumber: string;
-  timeStamp: string;
+  block_number: string;
+  timestamp: string;
   from: string;
   to: string;
   value: string;
   gas: string;
-  gasUsed: string;
-  gasPrice: string;
-  isError: string;
-  txreceipt_status: string;
-  methodId: string;
-  functionName: string;
+  gas_used: string;
+  gas_price: string;
+  is_error: string;
+  txreceipt_status: string | null;
+  method_id: string | null;
+  function_name: string | null;
 }
 
 interface EtherscanTokenTx {
   hash: string;
-  blockNumber: string;
-  timeStamp: string;
+  block_number: string;
+  timestamp: string;
   from: string;
   to: string;
   value: string;
-  tokenSymbol: string;
-  tokenName: string;
-  tokenDecimal: string;
-  contractAddress: string;
+  token_symbol: string;
+  token_name: string;
+  token_decimal: string;
+  contract_address: string;
 }
 
-interface EtherscanResponse<T> {
-  status: string;
-  message: string;
-  result: T[] | string;
+interface TauriEtherscanResult {
+  transactions: EtherscanTx[];
+  token_transfers: EtherscanTokenTx[];
+  error: string | null;
 }
 
 export interface TransactionRecord {
@@ -73,42 +77,38 @@ export interface TransactionRecord {
 }
 
 // ============================================================================
-// API Configuration
+// API Configuration - Etherscan V2
 // ============================================================================
 
 /**
- * Get block explorer API URL for a chain
+ * Map EVMChainId to numeric chain ID for Etherscan V2 API
  */
-function getExplorerApiUrl(chainId: EVMChainId): string | null {
+function getNumericChainId(chainId: EVMChainId): number | null {
   const chain = getChain(chainId);
-  return chain?.explorerApiUrl ?? null;
+  return chain?.chainId ?? null;
 }
 
 /**
- * Block explorer API keys (optional, for higher rate limits)
- * Users can configure these in settings
+ * Get Etherscan API key from settings store
+ * V2 uses a single key for all chains
  */
-let apiKeys: Record<string, string> = {};
-
-export function setApiKey(chainId: EVMChainId, key: string): void {
-  apiKeys[chainId] = key;
-}
-
-export function getApiKey(chainId: EVMChainId): string {
-  return apiKeys[chainId] ?? "";
+function getApiKeyFromSettings(): string | null {
+  const apiKey = useSettingsStore.getState().apiKeys.etherscan;
+  return apiKey || null;
 }
 
 // ============================================================================
-// Transaction Fetching
+// Transaction Fetching (via Tauri backend to bypass CORS)
 // ============================================================================
 
 /**
- * Fetch normal (ETH) transactions for an address
+ * Fetch transactions from Etherscan via Tauri command
+ * This bypasses CORS restrictions by routing through Rust backend
  */
 export async function fetchEthTransactions(
   address: Address,
   chainId: EVMChainId,
-  options: {
+  _options: {
     startBlock?: number;
     endBlock?: number;
     page?: number;
@@ -116,62 +116,43 @@ export async function fetchEthTransactions(
     sort?: "asc" | "desc";
   } = {}
 ): Promise<TransactionRecord[]> {
-  const apiUrl = getExplorerApiUrl(chainId);
-  if (!apiUrl) {
-    console.warn(`[Etherscan] No API URL for chain: ${chainId}`);
+  const numericChainId = getNumericChainId(chainId);
+  if (!numericChainId) {
+    console.warn(`[Etherscan] No chain ID for: ${chainId}`);
     return [];
   }
 
-  const {
-    startBlock = 0,
-    endBlock = 99999999,
-    page = 1,
-    offset = 50,
-    sort = "desc",
-  } = options;
-
-  const apiKey = getApiKey(chainId);
-  const params = new URLSearchParams({
-    module: "account",
-    action: "txlist",
-    address,
-    startblock: startBlock.toString(),
-    endblock: endBlock.toString(),
-    page: page.toString(),
-    offset: offset.toString(),
-    sort,
-    ...(apiKey && { apikey: apiKey }),
-  });
-
   try {
-    const response = await fetch(`${apiUrl}/api?${params}`);
-    const data: EtherscanResponse<EtherscanTx> = await response.json();
+    const apiKey = getApiKeyFromSettings();
+    console.log(`[Etherscan V2] Fetching ${chainId} (${numericChainId}) transactions via Tauri...`);
 
-    if (data.status !== "1" || typeof data.result === "string") {
-      // "No transactions found" is not an error
-      if (data.message === "No transactions found") {
-        return [];
-      }
-      console.warn(`[Etherscan] API warning: ${data.message}`);
-      return [];
+    const result = await invoke<TauriEtherscanResult>("fetch_etherscan_transactions", {
+      address,
+      chainId: numericChainId,
+      apiKey,
+    });
+
+    if (result.error) {
+      console.warn(`[Etherscan V2] API warning for ${chainId}: ${result.error}`);
     }
 
-    return data.result.map((tx) =>
+    console.log(`[Etherscan V2] Found ${result.transactions.length} transactions on ${chainId}`);
+    return result.transactions.map((tx) =>
       transformEthTransaction(tx, address, chainId)
     );
   } catch (error) {
-    console.error(`[Etherscan] Failed to fetch transactions:`, error);
+    console.error(`[Etherscan V2] Failed to fetch ${chainId} transactions:`, error);
     return [];
   }
 }
 
 /**
- * Fetch ERC-20 token transfers for an address
+ * Fetch ERC-20 token transfers from Etherscan via Tauri command
  */
 export async function fetchTokenTransfers(
   address: Address,
   chainId: EVMChainId,
-  options: {
+  _options: {
     startBlock?: number;
     endBlock?: number;
     page?: number;
@@ -179,49 +160,28 @@ export async function fetchTokenTransfers(
     sort?: "asc" | "desc";
   } = {}
 ): Promise<TransactionRecord[]> {
-  const apiUrl = getExplorerApiUrl(chainId);
-  if (!apiUrl) {
+  const numericChainId = getNumericChainId(chainId);
+  if (!numericChainId) {
+    console.warn(`[Etherscan V2] No chain ID for: ${chainId}`);
     return [];
   }
 
-  const {
-    startBlock = 0,
-    endBlock = 99999999,
-    page = 1,
-    offset = 50,
-    sort = "desc",
-  } = options;
-
-  const apiKey = getApiKey(chainId);
-  const params = new URLSearchParams({
-    module: "account",
-    action: "tokentx",
-    address,
-    startblock: startBlock.toString(),
-    endblock: endBlock.toString(),
-    page: page.toString(),
-    offset: offset.toString(),
-    sort,
-    ...(apiKey && { apikey: apiKey }),
-  });
-
   try {
-    const response = await fetch(`${apiUrl}/api?${params}`);
-    const data: EtherscanResponse<EtherscanTokenTx> = await response.json();
+    const apiKey = getApiKeyFromSettings();
+    console.log(`[Etherscan V2] Fetching ${chainId} (${numericChainId}) token transfers via Tauri...`);
 
-    if (data.status !== "1" || typeof data.result === "string") {
-      if (data.message === "No transactions found") {
-        return [];
-      }
-      console.warn(`[Etherscan] Token API warning: ${data.message}`);
-      return [];
-    }
+    const result = await invoke<TauriEtherscanResult>("fetch_etherscan_transactions", {
+      address,
+      chainId: numericChainId,
+      apiKey,
+    });
 
-    return data.result.map((tx) =>
+    console.log(`[Etherscan V2] Found ${result.token_transfers.length} token transfers on ${chainId}`);
+    return result.token_transfers.map((tx) =>
       transformTokenTransaction(tx, address, chainId)
     );
   } catch (error) {
-    console.error(`[Etherscan] Failed to fetch token transfers:`, error);
+    console.error(`[Etherscan V2] Failed to fetch ${chainId} token transfers:`, error);
     return [];
   }
 }
@@ -291,26 +251,26 @@ function transformEthTransaction(
     direction = "contract";
   }
 
-  // Determine status
+  // Determine status (using snake_case from Rust backend)
   let status: TransactionRecord["status"] = "success";
-  if (tx.isError === "1" || tx.txreceipt_status === "0") {
+  if (tx.is_error === "1" || tx.txreceipt_status === "0") {
     status = "failed";
   }
 
   return {
     hash: tx.hash,
     chainId,
-    blockNumber: tx.blockNumber ? parseInt(tx.blockNumber, 10) : null,
-    timestamp: parseInt(tx.timeStamp, 10),
+    blockNumber: tx.block_number ? parseInt(tx.block_number, 10) : null,
+    timestamp: parseInt(tx.timestamp, 10),
     from: tx.from,
     to: tx.to || null,
     value: tx.value,
-    gasUsed: tx.gasUsed,
-    gasPrice: tx.gasPrice,
+    gasUsed: tx.gas_used,
+    gasPrice: tx.gas_price,
     status,
     direction,
-    methodId: tx.methodId !== "0x" ? tx.methodId : undefined,
-    functionName: tx.functionName || undefined,
+    methodId: tx.method_id && tx.method_id !== "0x" ? tx.method_id : undefined,
+    functionName: tx.function_name || undefined,
   };
 }
 
@@ -337,8 +297,8 @@ function transformTokenTransaction(
   return {
     hash: tx.hash,
     chainId,
-    blockNumber: tx.blockNumber ? parseInt(tx.blockNumber, 10) : null,
-    timestamp: parseInt(tx.timeStamp, 10),
+    blockNumber: tx.block_number ? parseInt(tx.block_number, 10) : null,
+    timestamp: parseInt(tx.timestamp, 10),
     from: tx.from,
     to: tx.to || null,
     value: "0", // Token transfer, not ETH
@@ -347,11 +307,11 @@ function transformTokenTransaction(
     status: "success",
     direction,
     tokenTransfer: {
-      symbol: tx.tokenSymbol,
-      name: tx.tokenName,
-      decimals: parseInt(tx.tokenDecimal, 10),
+      symbol: tx.token_symbol,
+      name: tx.token_name,
+      decimals: parseInt(tx.token_decimal, 10),
       value: tx.value,
-      contractAddress: tx.contractAddress,
+      contractAddress: tx.contract_address,
     },
   };
 }

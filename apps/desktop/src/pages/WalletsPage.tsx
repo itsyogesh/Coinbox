@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
   Wallet,
@@ -10,6 +10,8 @@ import {
   ArrowRight,
   Copy,
   RefreshCw,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { ChainIcon } from "@/components/ui/crypto-icon";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,7 @@ import { useBitcoinStore } from "@/stores/bitcoinStore";
 import { useEthereumStore } from "@/stores/ethereumStore";
 import { formatBtc } from "@/lib/tauri/bitcoin";
 import { formatEther } from "@/lib/viem";
+import { getChain, type EVMChainId } from "@coinbox/chains";
 
 // Animation variants
 const containerVariants = {
@@ -60,12 +63,29 @@ const chainColors: Record<string, { text: string; bg: string }> = {
   solana: { text: "text-teal-500", bg: "bg-teal-500/10" },
 };
 
+// EVM chains for family grouping
+const EVM_CHAINS: EVMChainId[] = ["ethereum", "arbitrum", "optimism", "base", "polygon"];
+
 export default function WalletsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showWatchDialog, setShowWatchDialog] = useState(false);
+  const [expandedEvmWallets, setExpandedEvmWallets] = useState<Set<string>>(new Set());
+
+  const toggleEvmExpand = (walletId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedEvmWallets(prev => {
+      const next = new Set(prev);
+      if (next.has(walletId)) {
+        next.delete(walletId);
+      } else {
+        next.add(walletId);
+      }
+      return next;
+    });
+  };
 
   const {
     wallets,
@@ -287,38 +307,114 @@ export default function WalletsPage() {
                       </div>
                     )}
 
-                    {/* Ethereum Balance */}
+                    {/* Ethereum & L2s Family Section */}
                     {hasEthereum && (
                       <div className="mb-4 p-3 rounded-lg bg-blue-500/5 border border-blue-500/10">
-                        <div className="flex items-center justify-between">
+                        {/* Family Header - Clickable to expand */}
+                        <button
+                          onClick={(e) => toggleEvmExpand(wallet.id, e)}
+                          className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
+                        >
                           <div className="flex items-center gap-2">
                             <ChainIcon chainId="ethereum" size={16} variant="branded" />
-                            <span className="text-sm text-muted-foreground">
-                              Ethereum
+                            <span className="text-sm font-medium">
+                              Ethereum & L2s
                             </span>
+                            {expandedEvmWallets.has(wallet.id) ? (
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
                           </div>
-                          {isEthSyncing && (
-                            <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" />
+                          <div className="flex items-center gap-2">
+                            {isEthSyncing && (
+                              <RefreshCw className="h-3 w-3 text-muted-foreground animate-spin" />
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Total Balance */}
+                        <div className="mt-2">
+                          <p className="font-mono text-lg font-semibold tabular-nums">
+                            {parseFloat(ethFormatted) > 0
+                              ? parseFloat(ethFormatted).toFixed(6)
+                              : "0.00"}{" "}
+                            <span className="text-sm text-muted-foreground">
+                              ETH
+                            </span>
+                          </p>
+                          {ethTotalUsdValue > 0 && (
+                            <p className="font-mono text-sm text-muted-foreground tabular-nums">
+                              $
+                              {ethTotalUsdValue.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                              <span className="text-xs ml-1">(total across all chains)</span>
+                            </p>
                           )}
                         </div>
-                        <p className="font-mono text-lg font-semibold mt-1 tabular-nums">
-                          {parseFloat(ethFormatted) > 0
-                            ? parseFloat(ethFormatted).toFixed(6)
-                            : "0.00"}{" "}
-                          <span className="text-sm text-muted-foreground">
-                            ETH
-                          </span>
-                        </p>
-                        {ethTotalUsdValue > 0 && (
-                          <p className="font-mono text-sm text-muted-foreground tabular-nums">
-                            $
-                            {ethTotalUsdValue.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                            <span className="text-xs ml-1">(total)</span>
-                          </p>
-                        )}
+
+                        {/* Expandable Chain Breakdown */}
+                        <AnimatePresence>
+                          {expandedEvmWallets.has(wallet.id) && ethWalletState && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-3 pt-3 border-t border-blue-500/10 space-y-2">
+                                {EVM_CHAINS.map((chainId) => {
+                                  const chainState = ethWalletState[chainId];
+                                  const chainDef = getChain(chainId);
+                                  const chainBalance = chainState?.balance;
+                                  const chainWei = chainBalance?.wei ? BigInt(chainBalance.wei) : BigInt(0);
+                                  const chainEth = formatEther(chainWei);
+                                  const chainTokens = chainState?.tokens || [];
+                                  const tokenCount = chainTokens.filter(t => parseFloat(t.balance) > 0).length;
+                                  const colors = chainColors[chainId] || { text: "text-muted-foreground", bg: "bg-muted" };
+
+                                  // Skip chains with no balance and no tokens
+                                  if (chainWei === BigInt(0) && tokenCount === 0) return null;
+
+                                  return (
+                                    <div
+                                      key={chainId}
+                                      className={cn(
+                                        "flex items-center justify-between p-2 rounded-md",
+                                        colors.bg
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <ChainIcon chainId={chainId} size={14} variant="branded" />
+                                        <span className="text-xs font-medium">
+                                          {chainDef?.name || chainId}
+                                        </span>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="font-mono text-xs tabular-nums">
+                                          {parseFloat(chainEth) > 0
+                                            ? parseFloat(chainEth).toFixed(6)
+                                            : "0"}{" "}
+                                          <span className="text-muted-foreground">
+                                            {chainDef?.nativeCurrency.symbol || "ETH"}
+                                          </span>
+                                        </p>
+                                        {tokenCount > 0 && (
+                                          <p className="text-xs text-muted-foreground">
+                                            +{tokenCount} token{tokenCount !== 1 ? "s" : ""}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
 

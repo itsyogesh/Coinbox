@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useWalletStore } from "@/stores/walletStore";
 import { useBitcoinStore } from "@/stores/bitcoinStore";
 import { BitcoinBalanceCard, BitcoinTransactionList, ReceiveBitcoinDialog, SendBitcoinDialog } from "@/components/bitcoin";
-import { EthereumBalanceCard, ReceiveEthereumDialog } from "@/components/ethereum";
+import { EthereumBalanceCard, EthereumTransactionList, ReceiveEthereumDialog } from "@/components/ethereum";
 import type { Address } from "viem";
 
 // Animation variants
@@ -438,6 +438,13 @@ export default function WalletDetailsPage() {
                   walletId={wallet.id}
                   address={ethAddress.address as Address}
                 />
+              </motion.section>
+
+              <motion.section variants={itemVariants} className="space-y-4">
+                <h2 className="text-lg font-heading font-semibold">Recent EVM Transactions</h2>
+                <div className="card-premium p-4">
+                  <EthereumTransactionList walletId={wallet.id} limit={10} />
+                </div>
               </motion.section>
 
               {/* Receive Ethereum Dialog */}

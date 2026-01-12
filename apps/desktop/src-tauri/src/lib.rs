@@ -112,6 +112,8 @@ pub fn run() {
             commands::ethereum_sign_transaction_hash,
             commands::ethereum_get_address,
             commands::ethereum_validate_address,
+            // Etherscan API proxy (bypasses CORS)
+            commands::fetch_etherscan_transactions,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

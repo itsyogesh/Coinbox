@@ -62,16 +62,34 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 | Electrum/Esplora sync | ✅ Done | [#19](https://github.com/itsyogesh/Coinbox/issues/19) |
 | Bitcoin balance fetching | ✅ Done | [#18](https://github.com/itsyogesh/Coinbox/issues/18) |
 | Bitcoin transaction history | ✅ Done | [#16](https://github.com/itsyogesh/Coinbox/issues/16) |
-| Send Bitcoin transaction | ⏳ Pending | [#20](https://github.com/itsyogesh/Coinbox/issues/20) |
+| Send Bitcoin transaction | ✅ Done | [#20](https://github.com/itsyogesh/Coinbox/issues/20) |
 
 **Architecture highlights:**
 - `BitcoinAdapter` with BDK 1.2 + bdk_electrum 0.21
 - Electrum server sync (Blockstream defaults, configurable)
 - Full/watch-only wallet support via descriptors
 - UTXO management and fee estimation
+- `SendBitcoinDialog` with address validation, fee selection, confirmation flow
 - Tauri commands + TypeScript bindings
 
-### Up Next: Sprint 7-8 - Ethereum Integration
+### Sprint 7-8: Ethereum Integration ✅ COMPLETE
+
+| Task | Status | Issue |
+|------|--------|-------|
+| Viem setup + public client factory | ✅ Done | — |
+| Tauri signing bridge | ✅ Done | — |
+| ERC-20 token support | ✅ Done | — |
+| Ethereum transaction history (Etherscan V2) | ✅ Done | — |
+| L2 support (Arbitrum, Optimism, Base, Polygon) | ✅ Done | — |
+| Chain provider settings UI | ✅ Done | — |
+
+**Architecture highlights:**
+- `@coinbox/chains` centralized chain registry with family-based grouping
+- Viem for RPC calls (balances, token balances, gas estimation)
+- Etherscan V2 unified API for transaction history (via Tauri CORS bypass)
+- Family-grouped wallet display (EVM L2s grouped under "Ethereum & L2s")
+
+### Up Next: Sprint 9-10 - Tax Reporting & AI
 
 ---
 
@@ -81,12 +99,12 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 
 | Chain | Status | Features |
 |-------|--------|----------|
-| **Bitcoin** | 🔜 Sprint 3 | Full wallet, watch-only, UTXO tracking |
-| **Ethereum** | 🔜 Sprint 4 | ERC-20 tokens, transaction history |
-| **Arbitrum** | 🔜 Sprint 4 | Full L2 support |
-| **Optimism** | 🔜 Sprint 4 | Full L2 support |
-| **Base** | 🔜 Sprint 4 | Full L2 support |
-| **Polygon** | 🔜 Sprint 4 | Full L2 support |
+| **Bitcoin** | ✅ Live | Full wallet, watch-only, UTXO tracking, send |
+| **Ethereum** | ✅ Live | ERC-20 tokens, transaction history |
+| **Arbitrum** | ✅ Live | Full L2 support |
+| **Optimism** | ✅ Live | Full L2 support |
+| **Base** | ✅ Live | Full L2 support |
+| **Polygon** | ✅ Live | Full L2 support |
 
 ### Tax Reporting
 

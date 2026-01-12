@@ -61,6 +61,5 @@ export {
   fetchEthTransactions,
   fetchTokenTransfers,
   fetchAllTransactions,
-  setApiKey as setExplorerApiKey,
   type TransactionRecord,
 } from "./etherscan";
