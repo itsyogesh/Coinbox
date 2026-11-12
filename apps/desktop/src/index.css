@@ -1,6 +1,3 @@
-/* Typography: Sora for headings (geometric, confident), Inter for body */
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,18 +14,18 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 10%;
 
-    /* Primary: Rich Violet */
-    --primary: 262 83% 58%;
+    /* Primary */
+    --primary: 155 100% 23%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 260 50% 95%;
-    --secondary-foreground: 262 83% 58%;
+    --secondary: 149 40% 94%;
+    --secondary-foreground: 155 100% 23%;
 
     --muted: 240 5% 96%;
     --muted-foreground: 240 5% 45%;
 
-    --accent: 262 83% 95%;
-    --accent-foreground: 262 83% 45%;
+    --accent: 149 40% 94%;
+    --accent-foreground: 155 100% 23%;
 
     /* Semantic */
     --success: 152 69% 40%;
@@ -42,7 +39,7 @@
 
     --border: 240 6% 90%;
     --input: 240 6% 90%;
-    --ring: 262 83% 58%;
+    --ring: 155 100% 23%;
 
     --radius: 0.75rem;
 
@@ -52,8 +49,8 @@
     --sidebar-border: 240 6% 90%;
     --sidebar-muted: 240 5% 96%;
     --sidebar-muted-foreground: 240 5% 45%;
-    --sidebar-accent: 262 83% 95%;
-    --sidebar-accent-foreground: 262 83% 45%;
+    --sidebar-accent: 149 40% 94%;
+    --sidebar-accent-foreground: 155 100% 23%;
   }
 
   .dark {
@@ -67,18 +64,18 @@
     --popover: 240 10% 9%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary: Lighter violet for dark */
-    --primary: 263 70% 65%;
+    /* Primary */
+    --primary: 152 61% 71%;
     --primary-foreground: 240 10% 6%;
 
-    --secondary: 260 30% 18%;
+    --secondary: 150 20% 16%;
     --secondary-foreground: 263 70% 75%;
 
     --muted: 240 8% 14%;
     --muted-foreground: 240 5% 55%;
 
-    --accent: 262 50% 20%;
-    --accent-foreground: 263 70% 80%;
+    --accent: 150 24% 19%;
+    --accent-foreground: 152 61% 77%;
 
     /* Semantic - brighter for dark */
     --success: 152 60% 50%;
@@ -92,7 +89,7 @@
 
     --border: 240 8% 18%;
     --input: 240 8% 18%;
-    --ring: 263 70% 65%;
+    --ring: 152 61% 71%;
 
     /* Sidebar - slightly elevated */
     --sidebar-background: 240 10% 8%;
@@ -101,7 +98,7 @@
     --sidebar-muted: 240 8% 12%;
     --sidebar-muted-foreground: 240 5% 55%;
     --sidebar-accent: 262 50% 18%;
-    --sidebar-accent-foreground: 263 70% 80%;
+    --sidebar-accent-foreground: 152 61% 77%;
   }
 }
 
@@ -119,13 +116,13 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-family: "DM Sans", system-ui, -apple-system, sans-serif;
     font-optical-sizing: auto;
   }
 
-  /* Heading typography with Sora */
+  /* Heading typography */
   h1, h2, h3, h4, h5, h6, .font-heading {
-    font-family: "Sora", system-ui, sans-serif;
+    font-family: Geist, system-ui, sans-serif;
     font-weight: 600;
     letter-spacing: -0.02em;
   }
@@ -149,7 +146,7 @@
 
   /* Monospace for financial data */
   .font-mono, code {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: ui-monospace, monospace;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
   }
 

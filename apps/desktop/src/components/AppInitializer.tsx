@@ -60,7 +60,7 @@ export function AppInitializer({ children }: AppInitializerProps) {
   // Show loading screen while initializing
   if (isLoading || !isHydrated) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
+      <div className="flex min-h-[60vh] items-center justify-center bg-background">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}

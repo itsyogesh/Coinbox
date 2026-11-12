@@ -19,6 +19,8 @@ tauri = { version = "2", features = ["devtools"] }
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+coinbox-finance = { path = "../../../packages/finance" }
+tempfile = "3"
 
 # Database (bundled-sqlcipher includes both bundled SQLite and SQLCipher encryption)
 rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
