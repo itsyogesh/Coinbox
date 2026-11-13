@@ -3,9 +3,7 @@ use crate::{
     invalid, Result,
 };
 use std::{
-    fs,
-    io::Write,
-    path::Path,
+    io::{Read, Write},
     process::{Command, Stdio},
     thread,
     time::{Duration, Instant},
@@ -19,12 +17,8 @@ pub(crate) fn normalize(name: &str, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
     if bytes.len() > MAX_CSV_BYTES || !bytes.starts_with(b"%PDF-") {
         return Err(invalid("Choose a PDF statement of up to 1 MiB."));
     }
-    let mut input = tempfile::NamedTempFile::new()?;
-    input.write_all(bytes)?;
-    let work = tempfile::tempdir()?;
-    let info = work.path().join("info.txt");
-    run("pdfinfo", &[input.path()], Some(&info))?;
-    let info = fs::read_to_string(info)?;
+    let info = run("pdfinfo", &["-"], bytes, MAX_CSV_BYTES)?;
+    let info = read_text(&info)?;
     let pages = info
         .lines()
         .find_map(|line| line.strip_prefix("Pages:"))
@@ -35,73 +29,64 @@ pub(crate) fn normalize(name: &str, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
             "PDF statements can have up to eight pages. Split larger statements or export a CSV.",
         ));
     }
-    let layout = work.path().join("layout.txt");
-    run(
-        "pdftotext",
-        &[Path::new("-layout"), input.path(), &layout],
-        None,
-    )?;
-    let text = read_text(&layout)?;
-    if let Some(csv) = table(&text)? {
+
+    let layout = run("pdftotext", &["-layout", "-", "-"], bytes, MAX_CSV_BYTES)?;
+    if let Some(csv) = table(read_text(&layout)?)? {
         return Ok(Some(csv));
     }
+
     let mut ocr = String::new();
     for page in 1..=pages {
         let page = page.to_string();
-        let raster = work.path().join("raster");
-        run(
+        let image = run(
             "pdftoppm",
             &[
-                Path::new("-f"),
-                Path::new(&page),
-                Path::new("-l"),
-                Path::new(&page),
-                Path::new("-scale-to"),
-                Path::new("2200"),
-                Path::new("-singlefile"),
-                Path::new("-png"),
-                input.path(),
-                &raster,
+                "-f",
+                &page,
+                "-l",
+                &page,
+                "-scale-to",
+                "2200",
+                "-singlefile",
+                "-png",
+                "-",
             ],
-            None,
+            bytes,
+            16 * MAX_CSV_BYTES,
         )?;
-        let scanned = work.path().join("ocr.txt");
-        run(
+        let scanned = run(
             "tesseract",
             &[
-                &raster.with_extension("png"),
-                Path::new("stdout"),
-                Path::new("--psm"),
-                Path::new("6"),
-                Path::new("-c"),
-                Path::new("preserve_interword_spaces=1"),
+                "stdin",
+                "stdout",
+                "--psm",
+                "6",
+                "-c",
+                "preserve_interword_spaces=1",
             ],
-            Some(&scanned),
+            &image,
+            MAX_CSV_BYTES,
         )?;
-        ocr.push_str(&read_text(&scanned)?);
+        ocr.push_str(read_text(&scanned)?);
         ocr.push('\n');
+        if ocr.len() > MAX_CSV_BYTES {
+            return Err(invalid("The extracted statement text exceeds 1 MiB."));
+        }
     }
     table(&ocr)?.map(Some).ok_or_else(|| {
         invalid("No supported transaction table was found. Export the statement as CSV or Excel.")
     })
 }
 
-fn read_text(path: &Path) -> Result<String> {
-    if fs::metadata(path)?.len() > MAX_CSV_BYTES as u64 {
-        return Err(invalid("The extracted statement text exceeds 1 MiB."));
-    }
-    Ok(fs::read_to_string(path)?)
+fn read_text(bytes: &[u8]) -> Result<&str> {
+    std::str::from_utf8(bytes).map_err(|_| invalid("The extracted statement text is not UTF-8."))
 }
 
-fn run(command: &str, args: &[&Path], stdout: Option<&Path>) -> Result<()> {
-    let output = match stdout {
-        Some(path) => Stdio::from(fs::File::create(path)?),
-        None => Stdio::null(),
-    };
+fn run(command: &str, args: &[&str], input: &[u8], limit: usize) -> Result<Vec<u8>> {
     let mut child = Command::new(command)
         .args(args)
-        .stdin(Stdio::null())
-        .stdout(output)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
         .map_err(|error| {
@@ -111,22 +96,48 @@ fn run(command: &str, args: &[&Path], stdout: Option<&Path>) -> Result<()> {
                 error.into()
             }
         })?;
-    let deadline = Instant::now() + Duration::from_secs(12);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return if status.success() {
-                Ok(())
-            } else {
-                Err(invalid(format!("{command} could not read this PDF.")))
-            };
+    let mut stdin = child.stdin.take().expect("configured stdin pipe");
+    let stdout = child.stdout.take().expect("configured stdout pipe");
+
+    thread::scope(|scope| {
+        let writer = scope.spawn(move || stdin.write_all(input));
+        let reader = scope.spawn(move || {
+            let mut output = Vec::new();
+            stdout.take(limit as u64 + 1).read_to_end(&mut output)?;
+            Ok::<_, std::io::Error>(output)
+        });
+        let deadline = Instant::now() + Duration::from_secs(12);
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(status)) => break status,
+                Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(25)),
+                result => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return match result {
+                        Ok(_) => Err(invalid(format!("{command} timed out reading this PDF."))),
+                        Err(error) => Err(error.into()),
+                    };
+                }
+            }
+        };
+        let output = reader
+            .join()
+            .map_err(|_| invalid("Could not read extracted statement data."))??;
+        if output.len() > limit {
+            return Err(invalid("Extracted statement data exceeds the size limit."));
         }
-        if Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(invalid(format!("{command} timed out reading this PDF.")));
+        if !status.success() {
+            return Err(invalid(format!("{command} could not read this PDF.")));
         }
-        thread::sleep(Duration::from_millis(25));
-    }
+        match writer
+            .join()
+            .map_err(|_| invalid("Could not send the statement to the PDF parser."))?
+        {
+            Err(error) if error.kind() != std::io::ErrorKind::BrokenPipe => Err(error.into()),
+            _ => Ok(output),
+        }
+    })
 }
 
 fn columns(line: &str) -> Vec<&str> {

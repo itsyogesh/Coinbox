@@ -72,6 +72,7 @@ type GrantScope = "device" | "assistant";
 export type ServerGrant = { id: string; name: string; book: string; scope: GrantScope };
 
 let token = "";
+export const serverSessionEnded = "coinbox-server-session-ended";
 export let remoteFinance = !isTauri();
 
 export async function initializeFinance() {
@@ -88,14 +89,32 @@ export function serverGrant(action: object) {
   return serverRequest<unknown>("admin/grants", action);
 }
 
+function endSession(requestToken: string) {
+  if (requestToken && token === requestToken) {
+    token = "";
+    window.dispatchEvent(new Event(serverSessionEnded));
+  }
+}
+
 async function serverRequest<T>(path: string, data?: object, download?: string): Promise<T> {
-  if (isTauri()) return invoke<T>("finance_remote_request", { path, token, body: data ?? {} });
+  const requestToken = token;
+  if (isTauri()) {
+    try { return await invoke<T>("finance_remote_request", { path, token: requestToken, body: data ?? {} }); }
+    catch (error) {
+      if (error === "COINBOX_REMOTE_UNAUTHORIZED") {
+        endSession(requestToken);
+        throw new Error("This access token is invalid or has been revoked.");
+      }
+      throw error;
+    }
+  }
   const response = await fetch(`/api/${path}`, {
     method: "POST", cache: "no-store", credentials: "omit",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${requestToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(data ?? {}),
   });
   if (!response.ok) {
+    if (response.status === 401) endSession(requestToken);
     const payload: { error?: string } = await response.json().catch(() => ({}));
     throw new Error(payload.error ?? `Coinbox server returned HTTP ${response.status}.`);
   }

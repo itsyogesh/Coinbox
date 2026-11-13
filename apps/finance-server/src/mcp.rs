@@ -1,4 +1,4 @@
-use super::{blocking, forbidden, internal, token, ApiResult, Server};
+use super::{blocking, expired, forbidden, internal, token, ApiResult, Server};
 use crate::grants::Scope;
 use axum::{
     extract::State,
@@ -28,7 +28,10 @@ pub async fn request(
     }
     blocking(move || {
         let grants = server.grants.lock().map_err(|_| internal())?;
-        let grant = grants.find(token(&headers)?).filter(|grant| grant.scope == Scope::Assistant).ok_or_else(forbidden)?;
+        let grant = grants.find(token(&headers)?).ok_or_else(expired)?;
+        if grant.scope != Scope::Assistant {
+            return Err(forbidden());
+        }
         let id = &body["id"];
         let method = body["method"].as_str().unwrap_or_default();
         if body["jsonrpc"] != "2.0" || method.is_empty() {

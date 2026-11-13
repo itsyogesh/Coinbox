@@ -166,6 +166,13 @@ fn is_admin(server: &Server, token: &str) -> bool {
     grants::matches(&server.admin, token)
 }
 
+fn expired() -> ApiError {
+    ApiError(
+        StatusCode::UNAUTHORIZED,
+        "This access token is invalid or has been revoked.".into(),
+    )
+}
+
 fn forbidden() -> ApiError {
     ApiError(
         StatusCode::FORBIDDEN,
@@ -191,10 +198,12 @@ async fn books(State(server): State<Arc<Server>>, headers: HeaderMap) -> ApiResu
         let token = token(&headers)?;
         let admin = is_admin(&server, token);
         let grants = server.grants.lock().map_err(|_| internal())?;
-        let grant = grants
-            .find(token)
-            .filter(|grant| grant.scope == Scope::Device);
-        if !admin && grant.is_none() {
+        let grant = if admin {
+            None
+        } else {
+            Some(grants.find(token).ok_or_else(expired)?)
+        };
+        if grant.is_some_and(|grant| grant.scope != Scope::Device) {
             return Err(forbidden());
         }
         let vault = server.vault.lock().map_err(|_| internal())?;
@@ -326,9 +335,11 @@ async fn book_operation(
         let admin = is_admin(&server, token);
         // Hold the grant lock through the operation so a completed revocation also fences in-flight requests.
         let grants = server.grants.lock().map_err(|_| internal())?;
-        let grant = grants.find(token).filter(|grant| grant.book == book);
-        if !admin && !grant.is_some_and(|grant| grant.scope == Scope::Device) {
-            return Err(forbidden());
+        if !admin {
+            let grant = grants.find(token).ok_or_else(expired)?;
+            if grant.book != book || grant.scope != Scope::Device {
+                return Err(forbidden());
+            }
         }
         let mut vault = server.vault.lock().map_err(|_| internal())?;
         if !vault.books()?.iter().any(|item| item.id == book) {

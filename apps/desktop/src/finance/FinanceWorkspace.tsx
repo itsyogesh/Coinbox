@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays, Download, FileText, Inbox, LockKeyhole, Moon, Send, ShieldCheck, Sparkles, Sun, X } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { errorMessage, finance, inr, remoteFinance, type Bill, type Book, type LedgerEntry, type Report, type Review, type SourceRow, type VaultStatus } from "./api";
+import { errorMessage, finance, inr, remoteFinance, serverSessionEnded, type Bill, type Book, type LedgerEntry, type Report, type Review, type SourceRow, type VaultStatus } from "./api";
 import { AskCoinbox, Bills, FinanceReports, upcomingBills } from "./FinanceTools";
 import { ImportForm } from "./ImportForm";
 import { ImportReview, SourceLink } from "./ImportReview";
@@ -42,7 +42,12 @@ export function FinanceWorkspace() {
       setError(errorMessage(err));
     }
   }, []);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const reset = () => { void load(); };
+    window.addEventListener(serverSessionEnded, reset);
+    return () => window.removeEventListener(serverSessionEnded, reset);
+  }, [load]);
   const book = books.find((item) => item.id === bookId);
   return <>
     {error && <div className="coinbox-wrap"><p className="coinbox-alert" role="alert">{error}</p>

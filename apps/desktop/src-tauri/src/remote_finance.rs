@@ -70,6 +70,9 @@ pub async fn finance_remote_request(
         .await
         .map_err(|_| "Could not reach the private Coinbox server.")?;
     let status = response.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        return Err("COINBOX_REMOTE_UNAUTHORIZED".into());
+    }
     let filename = response
         .headers()
         .get(header::CONTENT_DISPOSITION)
