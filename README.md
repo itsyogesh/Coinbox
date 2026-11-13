@@ -1,19 +1,29 @@
 # Coinbox
 
-Coinbox brings INR bank and credit card statements into a ledger you can check against the originals. Review transactions before saving them, match card repayments as transfers, and export an April-to-March financial year for your accountant. The desktop app also includes the existing crypto wallet.
+Coinbox brings INR bank and credit card statements into a ledger you can check against the originals. Review transactions before saving them, match card repayments as transfers, and export an April-to-March financial year for your accountant. Coinbox also includes a desktop crypto wallet.
 
-## Getting started
+## Try Coinbox
 
-| I want to… | Start here |
+Start with the [desktop quickstart](docs/PRIVATE_FINANCE.md) and the two built-in sample statements. Review both before saving, then match the card repayment as a transfer. The sample ledger shows ₹1,000 in net spending, ₹5,000 in income, and three entries.
+
+Coinbox is available from source. Signed desktop installers are pending. You can use a phone browser to open an existing private workspace.
+
+## What you can do
+
+- Import CSV, single-sheet Excel, and supported unlocked PDFs. Start with CSV or Excel if your bank offers either format.
+- Bring in a downloaded statement attachment or an original email file. Standalone macOS supports an optional Gmail connection.
+- Check possible duplicates, review the original statement behind a transaction, export records, and download an encrypted workspace backup.
+
+## Guides
+
+| Task | Guide |
 | --- | --- |
-| Try Coinbox with sample statements | [Desktop quickstart](docs/PRIVATE_FINANCE.md) |
-| Run a private workspace and open it on my phone | [Self-hosting and integrations](docs/COINBOX_SELF_HOST.md) |
-| Preview or publish the public website | [Website guide](docs/COINBOX_WEBSITE.md) |
-| Check bank PDF coverage or feature availability | [Implementation status](docs/COINBOX_STATUS.md) |
+| Build the desktop app or restore a sample backup | [Desktop quickstart](docs/PRIVATE_FINANCE.md) |
+| Run a private workspace, connect a phone, or set up Gmail | [Self-hosting and integrations](docs/COINBOX_SELF_HOST.md) |
+| Preview or publish the website | [Website guide](docs/COINBOX_WEBSITE.md) |
+| Check supported formats, bank PDF references, and platform status | [Implementation status](docs/COINBOX_STATUS.md) |
 | Prepare a public release | [Release checklist](docs/COINBOX_RELEASE.md) |
 | Work on the existing crypto wallet | [Wallet architecture](docs/WALLET_CORE.md) and [wallet workflows](docs/WALLET_FLOWS.md) |
-
-Coinbox is available from source. The desktop guide covers how to build it and run a sample import. The phone experience opens an existing workspace in a browser.
 
 ## Project structure
 
