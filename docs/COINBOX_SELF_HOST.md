@@ -2,6 +2,8 @@
 
 The standalone Tauri app and the private finance server use the same Rust import and ledger engine. The server serves the responsive web app and API from one origin. A book has one active vault location. Choose either the standalone vault or the server for posting new entries after migration. The local wallet signer continues to use the desktop wallet storage.
 
+See [implementation status](COINBOX_STATUS.md) for supported platforms, issuer-specific PDF references, and release scope.
+
 ## Desktop
 
 Install a current stable Rust toolchain, Node.js 22, pnpm 9.15.0, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
@@ -33,22 +35,45 @@ The dashboard and sidebar open the book's chat. Spending and income answers are 
 
 ## Run the private server
 
-The server requires one private data directory, a finance passphrase file, a randomly generated administrator token file, and the built frontend. Install Poppler and Tesseract on the server for PDF imports.
+The server needs a data directory, a finance passphrase file, an administrator token file, and the built frontend. Install Poppler and Tesseract on the host for PDF imports. The server binds to `127.0.0.1:8787` by default.
 
-```sh
+### Local trial
+
+Run from the checkout root in Bash. Use the temporary vault for synthetic statements.
+
+```bash
+pnpm install --frozen-lockfile
 pnpm build
 cargo build --locked --manifest-path apps/finance-server/Cargo.toml
+
+umask 077
+coinbox_trial="$(mktemp -d)"
+read -r -s -p "Finance passphrase (14 characters minimum): " coinbox_passphrase
+printf '\n'
+printf '%s\n' "$coinbox_passphrase" > "$coinbox_trial/finance-passphrase"
+unset coinbox_passphrase
+openssl rand -hex 32 > "$coinbox_trial/finance-admin-token"
+
 export COINBOX_WEB_DIST="$PWD/apps/desktop/dist"
-export COINBOX_SERVER_DIR="/absolute/path/to/private/data"
-export COINBOX_SERVER_PASSPHRASE_FILE="/absolute/path/to/private/finance-passphrase"
-export COINBOX_SERVER_ADMIN_TOKEN_FILE="/absolute/path/to/private/finance-admin-token"
+export COINBOX_SERVER_DIR="$coinbox_trial/data"
+export COINBOX_SERVER_PASSPHRASE_FILE="$coinbox_trial/finance-passphrase"
+export COINBOX_SERVER_ADMIN_TOKEN_FILE="$coinbox_trial/finance-admin-token"
 apps/finance-server/target/debug/coinbox-finance-server init
 apps/finance-server/target/debug/coinbox-finance-server
 ```
 
-Create the two files before starting. Store the passphrase separately from the backups. Generate the 64-character lowercase hexadecimal admin token with `openssl rand -hex 32`. Give only the server process access to the files and vault directory. Coinbox binds to `127.0.0.1:8787` by default. For access from another device, serve it through HTTPS on a private LAN or VPN using your host's reverse proxy.
+Open `http://127.0.0.1:8787` on the host and enter the administrator token. From a second terminal, run `curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/health` and expect HTTP `204`. For ongoing use, put the vault and credentials in persistent locations and initialize the vault once.
 
-Open the private origin and enter the administrator token. **Server access** issues and revokes separate, one-book tokens for devices and assistants. Enter a device token in a second browser. For Tauri connected mode, launch with `COINBOX_REMOTE_SERVER` set to your HTTPS origin. The app also accepts an explicit numeric loopback HTTP origin for local testing. Connected mode reads and writes the server vault. Use the mobile browser for the same responsive interface.
+### Connect a phone or desktop
+
+1. Serve the loopback listener through your host's HTTPS reverse proxy on a private LAN or VPN.
+2. Open the private HTTPS URL as admin. Under **Server access**, create a **Device** token for the intended book.
+3. On the phone, open the same URL in Safari or Chrome and enter the device token. The responsive workspace can open the ledger, import statements, and export reports. The browser holds its token in memory, so reloading requires signing in again.
+4. For connected Tauri, run `COINBOX_REMOTE_SERVER=https://your-private-host pnpm tauri:dev` and sign in with a device token. An explicit numeric loopback HTTP origin also works for local desktop testing.
+
+The phone browser needs a reachable server. Native iOS and Android apps, camera capture, and offline drafts remain planned.
+
+### Backup and restore
 
 The admin can download an encrypted vault snapshot. To restore, stop the test server, point `COINBOX_SERVER_DIR` at an empty directory, use the backup's original passphrase, and run:
 
@@ -56,7 +81,7 @@ The admin can download an encrypted vault snapshot. To restore, stop the test se
 apps/finance-server/target/debug/coinbox-finance-server restore /absolute/path/to/backup.sqlite3
 ```
 
-The vault backup includes both books, bills, staged statements, and source rows. Device and assistant grants are stored separately and can be reissued after a restore. Keep one authoritative copy per book and rehearse restore on a separate profile before switching devices to the server.
+The vault backup includes both books, bills, staged statements, and source rows. Built-in backup and restore accept vaults up to 32 MiB. Keep the vault passphrase separately from the backup. Device and assistant grants are stored separately and can be reissued after a restore. Keep one authoritative copy per book and rehearse restore on a separate profile before switching devices to the server.
 
 ### Docker Compose
 
@@ -67,14 +92,12 @@ docker compose -f deploy/finance.compose.yml run --rm coinbox init
 docker compose -f deploy/finance.compose.yml up -d
 ```
 
-Use files named `finance-passphrase` and `finance-admin-token`. The service runs as UID 10001. On Linux, make the bind-mounted secret files readable by that UID while keeping them private. The named vault volume persists across restarts, and the published port binds to the host loopback interface. Terminate HTTPS at your private host's reverse proxy.
+Use files named `finance-passphrase` and `finance-admin-token`. The service runs as UID 10001. Initialize each volume once. Check startup with `docker compose -f deploy/finance.compose.yml logs coinbox` and the host loopback health endpoint. On Linux, make the bind-mounted secret files readable by that UID while keeping them private. The named vault volume persists across restarts, and the published port binds to the host loopback interface. Terminate HTTPS at your private host's reverse proxy.
 
 ### MCP
 
 Configure a client that supports [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and custom bearer headers. Set the URL to `https://<your-private-origin>/api/mcp` and use an assistant token from **Server access**. The endpoint offers three read-only tools for the granted book. Ledger summaries expose amounts and evidence row IDs. Coverage exposes statement dates and review counts. Bills expose recurring charges. Revoke the grant from **Server access** to stop subsequent calls.
 
-## Verification and remaining scope
+## Before moving real data
 
-Run `pnpm typecheck`, `pnpm build`, and the finance and desktop Cargo tests. Verify both desktop and browser with synthetic data before switching a real book to the server.
-
-The reports page exports an Indian fiscal-year ledger and evidence index for accountant review. Issuer-specific parsing needs sanitized statement fixtures. Provider-specific crypto exchange and Droidsize settlement reconciliation, native mobile offline drafts, and signed distribution are remaining work. Live Gmail consent and mailbox access require your configured OAuth client and a test account.
+Follow the [private rollout checks](COINBOX_STATUS.md#private-rollout-checks) on the target host. The local server was tested with synthetic data. The Compose configuration was validated and a container deployment on the intended host remains open.
