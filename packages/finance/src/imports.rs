@@ -128,7 +128,11 @@ impl Vault {
                 already_exists: true,
             });
         }
-        let rows = parse_statement(&statement.bytes, &statement.mapping)?;
+        let normalized = crate::document::normalize(&statement.name, &statement.bytes)?;
+        let rows = parse_statement(
+            normalized.as_deref().unwrap_or(&statement.bytes),
+            &statement.mapping,
+        )?;
         let name: String = statement
             .name
             .rsplit(['/', '\\'])
@@ -272,6 +276,28 @@ impl Vault {
 
     pub fn source_row(&self, book: &str, row_id: i64) -> Result<SourceRow> {
         Ok(observation(&self.conn, book, row_id)?.row)
+    }
+
+    pub fn source_extension(&self, book: &str, source_id: i64) -> Result<&'static str> {
+        let name: String = self
+            .conn
+            .query_row(
+                "SELECT name FROM source_documents WHERE book_id = ?1 AND id = ?2",
+                params![book, source_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| invalid("Statement not found in this book."))?;
+        let name = name.to_ascii_lowercase();
+        Ok(if name.ends_with(".xlsx") {
+            "xlsx"
+        } else if name.ends_with(".xls") {
+            "xls"
+        } else if name.ends_with(".pdf") {
+            "pdf"
+        } else {
+            "csv"
+        })
     }
 
     pub fn source_file(&self, book: &str, source_id: i64) -> Result<Vec<u8>> {

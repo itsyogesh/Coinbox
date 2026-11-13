@@ -180,3 +180,25 @@
   .coinbox-book-select { gap: 4px; font-size: 12px; }
   .coinbox-shell :is(th, td) { min-width: 92px; }
 }
+
+.coinbox-email-import { width: 100%; }
+.coinbox-email-review { display: grid; gap: 9px; margin-top: 8px; padding: 12px; border: 1px solid var(--cb-border); border-radius: 8px; background: var(--cb-soft); }
+.coinbox-email-review svg { display: inline-block; color: var(--cb-emerald); vertical-align: middle; }
+.coinbox-month-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 0; margin: 14px 0 0; list-style: none; }
+.coinbox-month-grid li { padding: 8px; border-radius: 7px; background: var(--cb-soft); }
+.coinbox-month-grid li[data-status="Rows available"] { color: var(--cb-emerald); background: var(--cb-tint); }
+.coinbox-month-grid li[data-status="Review open"] { color: var(--cb-warning); background: var(--cb-warning-bg); }
+.coinbox-month-grid small { display: block; font-size: 11px; }
+.coinbox-chat, .coinbox-chat-history { display: grid; gap: 12px; }
+.coinbox-chat-history article { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--cb-border); border-radius: 8px; background: var(--cb-soft); }
+.coinbox-chat-history p { white-space: pre-line; }
+.coinbox-chat form input { flex: 1 1 180px; }
+@media (max-width: 560px) { .coinbox-month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.coinbox-ask-spotlight { display: grid; grid-template-columns: auto auto minmax(160px, 1fr); align-items: center; gap: 13px; background: linear-gradient(135deg, var(--cb-panel), var(--cb-tint)); }
+.coinbox-ask-spotlight form { justify-content: flex-end; }
+.coinbox-shell .coinbox-ask-spotlight input:not([type="checkbox"]) { flex: 1 1 160px; max-width: 520px; }
+.coinbox-trend { display: grid; gap: 10px; list-style: none; margin: 12px 0 0; padding: 0; }
+.coinbox-trend li { display: grid; grid-template-columns: minmax(72px, auto) minmax(35px, 1fr) auto; align-items: center; gap: 8px; }
+.coinbox-trend-track { display: block; height: 8px; border-radius: 6px; background: var(--cb-soft); overflow: hidden; }
+.coinbox-trend-track span { display: block; height: 100%; border-radius: inherit; background: var(--cb-emerald); }
+@media (max-width: 560px) { .coinbox-ask-spotlight { grid-template-columns: auto 1fr; } .coinbox-ask-spotlight form { grid-column: 1 / -1; } }

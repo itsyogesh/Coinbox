@@ -45,20 +45,8 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 
 The finance tests use synthetic data to exercise duplicate uploads, confirmation retries, book isolation, exact money calculations, source links, CSV export, wrong passphrases, and encrypted backup and restore. Once dependencies are installed, the finance flow uses local Tauri commands and can be exercised with internet access disabled. The wallet routes use their existing network providers when opened.
 
-### Verification on macOS
+The Overview, Accounts, Bills, and Reports screens use the selected book. Ledger search and filters narrow the visible rows. The export contains the full selected book.
 
-The two finance integration tests and 101 desktop Rust tests passed. The desktop baseline test suite imported `tempfile` without declaring it in the manifest. The manifest now declares it for native exports and the existing wallet tests. All seven changed TypeScript files passed syntax transpilation.
+## Connected mode and integrations
 
-The frozen pnpm install was blocked by missing local tarballs and an npm registry DNS failure. Full typechecking, the frontend build, and the interactive Tauri walkthrough remain pending.
-
-## Path to a private server
-
-| Order | Scope | Before using real records |
-| --- | --- | --- |
-| 1. Desktop | Run the private executable with synthetic statements and make an encrypted backup. | Restore on a clean profile and compare both books, exports, and source rows. |
-| 2. Private server and web | Serve the same Rust finance core and web UI together on a user-controlled host. Use Docker Compose with a persistent local volume, secrets outside the image, and HTTPS over a private LAN or VPN. Add a typed client adapter, per-book device grants, and revocation. Keep one authoritative vault per book. | Verify a second device, confirmation retries, device revocation, restart, and restore. Rehearse rollback before migrating a book. |
-| 3. Everyday finance | Add issuer-specific formats, local OCR, reviewed EML attachments, coverage, and bills. Then add watch-only crypto, exchange exports, and Droidsize settlement imports. | Reconcile transfers and fees, verify attachment approval, and check book assignment. |
-| 4. Ask Coinbox and MCP | Add read-only ledger queries and source links. Evaluate an optional local model against held-out examples and authorize MCP access per book. | Compare answers against ledger reports and verify that revoked grants stop subsequent reads. |
-| 5. Live Gmail, mobile, and tax | Add optional Google read-only OAuth, mobile capture and offline drafts, signed builds, and fiscal-year CA review exports. | Verify attachment selection, device builds, backup restoration, and the CA export requirements. |
-
-The current executable stores one local vault on the device. A browser session at the Vite URL needs a Tauri bridge for finance actions. The private server API and multi-device access are milestone 2 work.
+See [COINBOX_SELF_HOST.md](COINBOX_SELF_HOST.md) for the server, Docker Compose, book-scoped device and MCP access, EML and Gmail, reports, and optional Ollama setup.

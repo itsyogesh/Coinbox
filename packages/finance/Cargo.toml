@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 chrono = "0.4"
+calamine = { version = "0.35", features = ["chrono"] }
 hex = "0.4"
 rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
 serde = { version = "1", features = ["derive"] }

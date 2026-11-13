@@ -1,8 +1,9 @@
+import { isTauri } from "@tauri-apps/api/core";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
-  ArrowLeftRight, FileText, Inbox, LayoutDashboard, List, PanelLeftClose, PanelLeftOpen,
+  ArrowLeftRight, CalendarDays, FileText, Inbox, Landmark, LayoutDashboard, List, PanelLeftClose, PanelLeftOpen,
   Settings, Sparkles, Wallet,
 } from "lucide-react";
 import mark from "@/assets/finance/mark.svg";
@@ -14,6 +15,11 @@ const navigation = [
   { label: "Ledger", icon: List, path: "/ledger" },
   { label: "Import Inbox", icon: Inbox, path: "/imports" },
   { label: "Ask Coinbox", icon: Sparkles, path: "/ask" },
+];
+const features = [
+  { label: "Accounts", icon: Landmark, path: "/accounts" },
+  { label: "Bills", icon: CalendarDays, path: "/bills" },
+  { label: "Reports & tax", icon: FileText, path: "/reports" },
 ];
 const walletNavigation = [
   { label: "Wallets", icon: Wallet, path: "/wallets" },
@@ -52,15 +58,16 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </button>
         </div>
         <nav aria-label="Finance"><NavItems items={navigation} /></nav>
-        <nav aria-label="Wallet"><div className="coinbox-nav-heading">Wallet</div><NavItems items={walletNavigation} /></nav>
+        <nav aria-label="Features"><div className="coinbox-nav-heading">Features</div><NavItems items={features} /></nav>
+        {isTauri() && <nav aria-label="Wallet"><div className="coinbox-nav-heading">Wallet</div><NavItems items={walletNavigation} /></nav>}
       </aside>
       <div className="coinbox-mobile-top">
         <Link to="/" aria-label="Coinbox overview"><img className="coinbox-wordmark light" src={wordmark} alt="" />
           <img className="coinbox-wordmark dark-logo" src={wordmarkDark} alt="" /></Link>
-        <button type="button" className="coinbox-button secondary" aria-expanded={mobileOpen} aria-controls="mobile-wallet-menu"
-          onClick={() => setMobileOpen(!mobileOpen)}><Wallet size={16} aria-hidden="true" /> Wallet</button>
-        <nav id="mobile-wallet-menu" aria-label="Wallet" hidden={!mobileOpen} onClick={() => setMobileOpen(false)}>
-          <NavItems items={walletNavigation} />
+        <button type="button" className="coinbox-button secondary" aria-expanded={mobileOpen} aria-controls="mobile-more-menu"
+          onClick={() => setMobileOpen(!mobileOpen)}><List size={16} aria-hidden="true" /> More</button>
+        <nav id="mobile-more-menu" aria-label="More Coinbox pages" hidden={!mobileOpen} onClick={() => setMobileOpen(false)}>
+          <NavItems items={isTauri() ? [...features, ...walletNavigation] : features} />
         </nav>
       </div>
       <main id="coinbox-main" className="coinbox-main" tabIndex={-1}>{children}</main>

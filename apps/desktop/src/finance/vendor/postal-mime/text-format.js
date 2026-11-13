@@ -1,0 +1,520 @@
+import { htmlEntities } from './html-entities.js';
+import { textEncoder } from './decode-strings.js';
+// What a numeric character reference to the C1 control range stands for, per the HTML
+// numeric character reference end state: the windows-1252 character at that byte. This is
+// how Outlook and Word write their curly quotes and dashes (`&#146;`, `&#150;`), and the
+// raw control character they decoded to otherwise is invisible in the text.
+const C1_ENTITY_REPLACEMENTS = new Map([
+    [0x80, 0x20ac],
+    [0x82, 0x201a],
+    [0x83, 0x0192],
+    [0x84, 0x201e],
+    [0x85, 0x2026],
+    [0x86, 0x2020],
+    [0x87, 0x2021],
+    [0x88, 0x02c6],
+    [0x89, 0x2030],
+    [0x8a, 0x0160],
+    [0x8b, 0x2039],
+    [0x8c, 0x0152],
+    [0x8e, 0x017d],
+    [0x91, 0x2018],
+    [0x92, 0x2019],
+    [0x93, 0x201c],
+    [0x94, 0x201d],
+    [0x95, 0x2022],
+    [0x96, 0x2013],
+    [0x97, 0x2014],
+    [0x98, 0x02dc],
+    [0x99, 0x2122],
+    [0x9a, 0x0161],
+    [0x9b, 0x203a],
+    [0x9c, 0x0153],
+    [0x9e, 0x017e],
+    [0x9f, 0x0178]
+]);
+export function decodeHTMLEntities(str) {
+    return str.replace(/&(#\d+|#x[a-f0-9]+|[a-z]+\d*);?/gi, (match, entity) => {
+        if (typeof htmlEntities[match] === 'string') {
+            return htmlEntities[match];
+        }
+        if (entity.charAt(0) !== '#' || match.charAt(match.length - 1) !== ';') {
+            // keep as is, invalid or unknown sequence
+            return match;
+        }
+        let codePoint;
+        // The pattern matches the marker in either case, so the test has to as well. Reading
+        // `&#X41;` as decimal gave NaN, which passes every range check below and comes out
+        // of String.fromCharCode as a NUL character
+        if (entity.charAt(1).toLowerCase() === 'x') {
+            codePoint = parseInt(entity.slice(2), 16);
+        }
+        else {
+            codePoint = parseInt(entity.slice(1), 10);
+        }
+        let output = '';
+        // A NUL reference, a surrogate or a code point out of range is a replacement
+        // character, like in a browser. A NUL in particular would truncate the text in
+        // whatever reads it next
+        if (codePoint === 0 || (codePoint >= 0xd800 && codePoint <= 0xdfff) || codePoint > 0x10ffff) {
+            return '\ufffd';
+        }
+        codePoint = C1_ENTITY_REPLACEMENTS.get(codePoint) ?? codePoint;
+        if (codePoint > 0xffff) {
+            codePoint -= 0x10000;
+            output += String.fromCharCode(((codePoint >>> 10) & 0x3ff) | 0xd800);
+            codePoint = 0xdc00 | (codePoint & 0x3ff);
+        }
+        output += String.fromCharCode(codePoint);
+        return output;
+    });
+}
+// two uppercase hex digits of a value below 256
+const hexByte = (value) => value.toString(16).toUpperCase().padStart(2, '0');
+export function escapeHtml(str) {
+    return str.trim().replace(/[<>"'?&]/g, c => '&#x' + hexByte(c.charCodeAt(0)) + ';');
+}
+// The characters an address may carry into a mailto URL as they are (RFC 6068 2:
+// unreserved and some-delims). Anything else is percent encoded: a `?` or `&` starts the
+// header fields of the URL, so `help@bank.example?cc=attacker@evil.example&body=…` given
+// as the address of a forwarded message opened a compose window with a Cc and a body the
+// sender chose once the link was clicked. Html escaping alone does not help, the browser
+// decodes the entities back before it reads the URL
+const MAILTO_UNSAFE = /[^A-Za-z0-9\-._~!$'()*+,;:@]+/g;
+// the percent encoded form of every byte, so that an encoded run allocates nothing per byte
+const PERCENT_ENCODED = Array.from({ length: 256 }, (_, byte) => '%' + hexByte(byte));
+// Each unsafe run is encoded whole and the result is built flat by replace. Appended one
+// character at a time it was a cons string of a node per character, which escapeHtml then
+// flattened: a long address of percent signs in a forwarded header held some sixty bytes
+// of heap per byte of it until then
+function encodeMailto(address) {
+    return address.replace(MAILTO_UNSAFE, run => Array.from(textEncoder.encode(run), byte => PERCENT_ENCODED[byte]).join(''));
+}
+export function textToHtml(str) {
+    let html = escapeHtml(str).replace(/\n/g, '<br />');
+    return '<div>' + html + '</div>';
+}
+// htmlToText strips tags with regexes like `<br\b[^>]*>` and `<!--.*?-->`. Handed to
+// String#replace as they are, the engine tries every candidate in turn and a candidate
+// that does not close scans on to the next `>` or the end of the input before giving up,
+// so an html part holding many unclosed `<`, `<a ` or `<!--` took seconds to minutes to
+// convert. The helpers below give the same results in linear time. They run on text
+// without line terminators, see htmlToText, so `.` matches every character of it.
+/**
+ * Returns a function that finds the next match of a global regex at or after a position.
+ *
+ * Callers only ever ask about positions that move forward, so a match stays the answer
+ * until a position passes it, and no match stays the answer for good. That way every part
+ * of the string is scanned once, however many times it is asked about.
+ *
+ * @param str String to search
+ * @param regex Global regex to look for
+ * @return `pos => match` of the next match, or null if there is none
+ */
+function createFinder(str, regex) {
+    let searchedFrom = Infinity;
+    let found = null;
+    return pos => {
+        if (pos < searchedFrom || (found && pos > found.index)) {
+            regex.lastIndex = pos;
+            found = regex.exec(str);
+            searchedFrom = pos;
+        }
+        return found;
+    };
+}
+/**
+ * Runs `process` on the text up to and including the last `>` and appends the rest as is,
+ * for a pass whose every match ends at a `>`. The text after the last `>` can never match
+ * and is where a failing pattern rescans to the end from each candidate.
+ *
+ * @param str String to process
+ * @param process The pass to run
+ * @return Processed string
+ */
+function throughLastTag(str, process) {
+    const end = str.lastIndexOf('>') + 1;
+    return process(str.slice(0, end)) + str.slice(end);
+}
+/**
+ * `str.replace(pattern, replacement)` for a pattern shaped like `<tag\b[^>]*>`.
+ *
+ * Such a pattern only fails at a candidate that has no `>` after it, so the text after
+ * the last `>` can never match and is where every rescan happened. Leaving it out keeps
+ * the native replace, and its speed, for everything else.
+ *
+ * @param str String to process
+ * @param pattern Global regex that ends on the first `>` after its start
+ * @param replacement Replacement text
+ * @return Processed string
+ */
+function replaceClosedTags(str, pattern, replacement) {
+    return throughLastTag(str, head => head.replace(pattern, replacement));
+}
+/**
+ * `str.replace(pattern, replacement)` for a tag pattern that may fail even when a `>`
+ * follows, like `<a\b[^>]*href...>`, or that runs on past its `>`.
+ *
+ * A candidate with no `>` after it ends the search, since no later candidate can close
+ * either. A candidate that does not match skips every other candidate before the same
+ * `>`, since those see the same tag body and fail the same way.
+ *
+ * @param str String to process
+ * @param prefix Global regex for the start of a candidate, which can not contain `>`
+ * @param pattern The whole pattern as a sticky regex
+ * @param replacement Function given the match and its groups
+ * @return Processed string
+ */
+function replaceTags(str, prefix, pattern, replacement) {
+    const parts = [];
+    // everything before this index is already in parts
+    let copied = 0;
+    let searchFrom = 0;
+    while (true) {
+        prefix.lastIndex = searchFrom;
+        const candidate = prefix.exec(str);
+        if (!candidate) {
+            break;
+        }
+        const start = candidate.index;
+        // Looked up before the pattern runs. The engine finds out on its own that there is
+        // no `>` to close on, but only after it has retried the tail of the pattern at every
+        // `href` in the rest of the input and rescanned to the end each time, which made an
+        // html part of many unclosed `<a href` tags quadratic to convert
+        const gt = str.indexOf('>', start);
+        if (gt < 0) {
+            break;
+        }
+        pattern.lastIndex = start;
+        const match = pattern.exec(str);
+        if (!match) {
+            searchFrom = gt + 1;
+            continue;
+        }
+        parts.push(str.slice(copied, start), replacement(...match));
+        copied = searchFrom = start + match[0].length;
+    }
+    parts.push(str.slice(copied));
+    return parts.join('');
+}
+/**
+ * `str.replace(pattern, replacement)` for a pattern like `<!--.*?-->` or
+ * `<script\b[^>]*>.*?<\/script\b[^>]*>`, ie. an opener and a closer, either of which may
+ * continue with `[^>]*>`, and a lazy `.*?` between them. The engine rescans to the end of
+ * the input for every opener that is not closed.
+ *
+ * @param str String to process
+ * @param open Global regex for the opener
+ * @param openToGt Whether the opener continues with `[^>]*>`
+ * @param close Global regex for the closer
+ * @param closeToGt Whether the closer continues with `[^>]*>`
+ * @param replacement Replacement text
+ * @return Processed string
+ */
+function replaceBlocks(str, open, openToGt, close, closeToGt, replacement) {
+    const nextGt = createFinder(str, />/g);
+    const nextClose = createFinder(str, close);
+    const parts = [];
+    let copied = 0;
+    let searchFrom = 0;
+    while (true) {
+        open.lastIndex = searchFrom;
+        const opener = open.exec(str);
+        if (!opener) {
+            break;
+        }
+        const start = opener.index;
+        searchFrom = start + 1;
+        // where the lazy `.*?` starts
+        let from = start + opener[0].length;
+        if (openToGt) {
+            const gt = nextGt(from);
+            if (!gt) {
+                // neither this opener nor any later one can close
+                break;
+            }
+            from = gt.index + 1;
+        }
+        const closer = nextClose(from);
+        if (!closer) {
+            // no closer follows this opener, so none follows a later one either
+            break;
+        }
+        let end = closer.index + closer[0].length;
+        if (closeToGt) {
+            const gt = nextGt(end);
+            if (!gt) {
+                // this is the first closer after the opener, and any other one comes
+                // later, so none of them is followed by `>`
+                break;
+            }
+            end = gt.index + 1;
+        }
+        parts.push(str.slice(copied, start), replacement);
+        copied = searchFrom = end;
+    }
+    parts.push(str.slice(copied));
+    return parts.join('');
+}
+/**
+ * `str.replace(pattern, '')` for `^.*<tag\b[^>]*>`, ie. drops everything up to and
+ * including the last such tag.
+ *
+ * @param str String to process
+ * @param prefix Global regex for the start of the tag, which can not contain `>`
+ * @return Processed string
+ */
+function stripThroughLastTag(str, prefix) {
+    // `[^>]*>` needs a `>` after the tag
+    const limit = str.lastIndexOf('>');
+    let last = -1;
+    prefix.lastIndex = 0;
+    let match;
+    while ((match = prefix.exec(str)) && match.index < limit) {
+        last = match.index;
+    }
+    return last < 0 ? str : str.slice(str.indexOf('>', last) + 1);
+}
+/**
+ * `str.replace(pattern, '')` for `<tag\b[^>]*>.*$`, ie. drops the first such tag that is
+ * closed, and everything after it.
+ *
+ * @param str String to process
+ * @param prefix Global regex for the start of the tag, which can not contain `>`
+ * @return Processed string
+ */
+function stripFromFirstTag(str, prefix) {
+    prefix.lastIndex = 0;
+    const match = prefix.exec(str);
+    return match && match.index < str.lastIndexOf('>') ? str.slice(0, match.index) : str;
+}
+export function htmlToText(str) {
+    // Tags are not processed across lines, so every line terminator, every character `.`
+    // does not match, becomes a placeholder first. Only `\r?\n` used to, and the patterns
+    // below do not cross the others either: `.*?` stops at a bare CR or a U+2028, so a
+    // script whose body held one was not removed as a block, its tags were stripped as
+    // tags and the script itself landed in the text, which a filter reading the text then
+    // took for content
+    str = str.replace(/\r\n|[\n\r\u2028\u2029]/g, '\u0001');
+    str = replaceBlocks(str, /<!--/g, false, /-->/g, false, ' ');
+    str = replaceClosedTags(str, /<br\b[^>]*>/gi, '\n');
+    str = replaceClosedTags(str, /<\/?(p|div|table|tr|td|th)\b[^>]*>/gi, '\n\n');
+    str = replaceBlocks(str, /<script\b/gi, true, /<\/script\b/gi, true, ' ');
+    // a stylesheet in the body is no text of the message either
+    str = replaceBlocks(str, /<style\b/gi, true, /<\/style\b/gi, true, ' ');
+    str = stripThroughLastTag(str, /<body\b/gi);
+    str = stripThroughLastTag(str, /<\/head\b/gi);
+    str = stripThroughLastTag(str, /<!doctype\b/gi);
+    str = stripFromFirstTag(str, /<\/body\b/gi);
+    str = stripFromFirstTag(str, /<\/html\b/gi);
+    // The href capture also matches `>`, so after a link a run with no whitespace or quote
+    // is taken to the end of the input and given back one character at a time, retrying
+    // `[^>]*>` to the end from each, which is quadratic when no `>` follows
+    str = throughLastTag(str, head => replaceTags(head, /<a\b/gi, /<a\b[^>]*href\s*=\s*["']?([^\s"']+)[^>]*>/iy, (match, href) => ` (${href}) `));
+    str = replaceClosedTags(str, /<\/?(span|em|i|strong|b|u|a)\b[^>]*>/gi, '');
+    // the whitespace after the tag may run on past the last `>`
+    str = replaceTags(str, /<li\b/gi, /<li\b[^>]*>[\n\u0001\s]*/iy, () => '* ');
+    str = replaceClosedTags(str, /<hr\b[^>]*>/g, '\n-------------\n');
+    str = replaceClosedTags(str, /<[^>]*>/g, ' ');
+    str = str
+        // convert linebreak placeholders back to newlines
+        .replace(/\u0001/g, '\n')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/^\s+$/gm, '')
+        .replace(/\n\n+/g, '\n\n')
+        .replace(/^\n+/, '\n')
+        .replace(/\n+$/, '\n');
+    str = decodeHTMLEntities(str);
+    return str;
+}
+// The formatter the dates of forwarded headers are rendered with, created on first use.
+// One instance serves every date, a formatter is immutable. Constructing one per rendered
+// header held some 30 KB of ICU state outside the V8 heap for each, so a message of a few
+// thousand dated forwards took hundreds of megabytes that no heap limit saw, and several
+// times the time of the same message without the dates
+let dateFormatter = null;
+// A message date is not always a date. PostalMime keeps the raw header value when it does
+// not parse, and Intl.DateTimeFormat throws a RangeError on that, which used to reject the
+// whole parse of any message carrying a forwarded copy with a broken Date header.
+function formatDate(date) {
+    if (typeof Intl === 'undefined') {
+        return date;
+    }
+    const parsed = new Date(date);
+    if (isNaN(parsed.getTime())) {
+        return date;
+    }
+    dateFormatter ??= new Intl.DateTimeFormat('default', {
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        second: 'numeric',
+        hour12: false
+    });
+    return dateFormatter.format(parsed);
+}
+function formatTextAddress(address) {
+    return (address.name ? [address.name, `<${address.address}>`] : [address.address]).join(' ');
+}
+function formatTextAddresses(addresses) {
+    let parts = [];
+    let processAddress = (address, partCounter) => {
+        if (partCounter) {
+            parts.push(', ');
+        }
+        if (address.group) {
+            let groupStart = `${address.name}:`;
+            let groupEnd = `;`;
+            parts.push(groupStart);
+            address.group.forEach(processAddress);
+            parts.push(groupEnd);
+        }
+        else {
+            parts.push(formatTextAddress(address));
+        }
+    };
+    addresses.forEach(processAddress);
+    return parts.join('');
+}
+function formatHtmlAddress(address) {
+    return `<a href="mailto:${escapeHtml(encodeMailto(address.address))}" class="postal-email-address">${escapeHtml(address.name || `<${address.address}>`)}</a>`;
+}
+function formatHtmlAddresses(addresses) {
+    let parts = [];
+    let processAddress = (address, partCounter) => {
+        if (partCounter) {
+            parts.push('<span class="postal-email-address-separator">, </span>');
+        }
+        if (address.group) {
+            let groupStart = `<span class="postal-email-address-group">${escapeHtml(address.name)}:</span>`;
+            let groupEnd = `<span class="postal-email-address-group">;</span>`;
+            parts.push(groupStart);
+            address.group.forEach(processAddress);
+            parts.push(groupEnd);
+        }
+        else {
+            parts.push(formatHtmlAddress(address));
+        }
+    };
+    addresses.forEach(processAddress);
+    return parts.join(' ');
+}
+function foldLines(str, lineLength, afterSpace) {
+    str = (str || '').toString();
+    lineLength = lineLength || 76;
+    let pos = 0, len = str.length, result = '', line, match;
+    while (pos < len) {
+        line = str.slice(pos, pos + lineLength);
+        if (line.length < lineLength) {
+            result += line;
+            break;
+        }
+        if ((match = line.match(/^[^\n\r]*(\r?\n|\r)/))) {
+            line = match[0];
+            result += line;
+            pos += line.length;
+            continue;
+        }
+        else if ((match = line.match(/(\s+)[^\s]*$/)) &&
+            match[0].length - (afterSpace ? (match[1] || '').length : 0) < line.length) {
+            line = line.slice(0, line.length - (match[0].length - (afterSpace ? (match[1] || '').length : 0)));
+        }
+        else if ((match = str.slice(pos + line.length).match(/^[^\s]+(\s*)/))) {
+            line = line + match[0].slice(0, match[0].length - (!afterSpace ? (match[1] || '').length : 0));
+        }
+        result += line;
+        pos += line.length;
+        if (pos < len) {
+            result += '\r\n';
+        }
+    }
+    return result;
+}
+export function formatTextHeader(message) {
+    let rows = [];
+    if (message.from) {
+        // through the plural formatter, because `From:` may hold RFC 5322 group syntax
+        // and a group has no address of its own
+        rows.push({ key: 'From', val: formatTextAddresses([message.from]) });
+    }
+    if (message.subject) {
+        rows.push({ key: 'Subject', val: message.subject });
+    }
+    if (message.date) {
+        rows.push({ key: 'Date', val: formatDate(message.date) });
+    }
+    if (message.to && message.to.length) {
+        rows.push({ key: 'To', val: formatTextAddresses(message.to) });
+    }
+    if (message.cc && message.cc.length) {
+        rows.push({ key: 'Cc', val: formatTextAddresses(message.cc) });
+    }
+    if (message.bcc && message.bcc.length) {
+        rows.push({ key: 'Bcc', val: formatTextAddresses(message.bcc) });
+    }
+    // Align keys and values by adding space between these two
+    // Also make sure that the separator line is as long as the longest line
+    // Should end up with something like this:
+    /*
+    -----------------------------
+    From:    xx xx <xxx@xxx.com>
+    Subject: Example Subject
+    Date:    16/02/2021, 02:57:06
+    To:      not@found.com
+    -----------------------------
+    */
+    let maxKeyLength = rows
+        .map(r => r.key.length)
+        .reduce((acc, cur) => {
+        return cur > acc ? cur : acc;
+    }, 0);
+    const lines = rows.flatMap(row => {
+        let sepLen = maxKeyLength - row.key.length;
+        let prefix = `${row.key}: ${' '.repeat(sepLen)}`;
+        let emptyPrefix = `${' '.repeat(row.key.length + 1)} ${' '.repeat(sepLen)}`;
+        let foldedLines = foldLines(row.val, 80, true)
+            .split(/\r?\n/)
+            .map(line => line.trim());
+        return foldedLines.map((line, i) => `${i ? emptyPrefix : prefix}${line}`);
+    });
+    let maxLineLength = lines
+        .map(r => r.length)
+        .reduce((acc, cur) => {
+        return cur > acc ? cur : acc;
+    }, 0);
+    let lineMarker = '-'.repeat(maxLineLength);
+    let template = `
+${lineMarker}
+${lines.join('\n')}
+${lineMarker}
+`;
+    return template;
+}
+export function formatHtmlHeader(message) {
+    let rows = [];
+    if (message.from) {
+        rows.push(
+        // through the plural formatter, because `From:` may hold RFC 5322 group syntax
+        // and a group has no address of its own
+        `<div class="postal-email-header-key">From</div><div class="postal-email-header-value">${formatHtmlAddresses([message.from])}</div>`);
+    }
+    if (message.subject) {
+        rows.push(`<div class="postal-email-header-key">Subject</div><div class="postal-email-header-value postal-email-header-subject">${escapeHtml(message.subject)}</div>`);
+    }
+    if (message.date) {
+        rows.push(`<div class="postal-email-header-key">Date</div><div class="postal-email-header-value postal-email-header-date" data-date="${escapeHtml(message.date)}">${escapeHtml(formatDate(message.date))}</div>`);
+    }
+    if (message.to && message.to.length) {
+        rows.push(`<div class="postal-email-header-key">To</div><div class="postal-email-header-value">${formatHtmlAddresses(message.to)}</div>`);
+    }
+    if (message.cc && message.cc.length) {
+        rows.push(`<div class="postal-email-header-key">Cc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.cc)}</div>`);
+    }
+    if (message.bcc && message.bcc.length) {
+        rows.push(`<div class="postal-email-header-key">Bcc</div><div class="postal-email-header-value">${formatHtmlAddresses(message.bcc)}</div>`);
+    }
+    let template = `<div class="postal-email-header">${rows.length ? '<div class="postal-email-header-row">' : ''}${rows.join('</div>\n<div class="postal-email-header-row">')}${rows.length ? '</div>' : ''}</div>`;
+    return template;
+}

@@ -2,6 +2,7 @@ import { Routes, Route, Outlet } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { AppInitializer } from "@/components/AppInitializer";
 import { Toaster } from "@/components/ui/toaster";
+import { remoteFinance } from "@/finance/api";
 import { FinanceWorkspace } from "@/finance/FinanceWorkspace";
 
 import DashboardPage from "@/pages/DashboardPage";
@@ -20,6 +21,10 @@ function App() {
           <Route path="imports" element={null} />
           <Route path="ledger" element={null} />
           <Route path="ask" element={null} />
+          <Route path="bills" element={null} />
+          <Route path="reports" element={null} />
+          <Route path="accounts" element={null} />
+          {remoteFinance && <Route path="server-access" element={null} />}
         </Route>
         <Route element={<AppInitializer><div className="coinbox-wallet-content"><Outlet /></div></AppInitializer>}>
           <Route path="crypto" element={<DashboardPage />} />

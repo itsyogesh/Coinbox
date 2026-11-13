@@ -1,8 +1,12 @@
+mod bills;
 mod csv;
+mod document;
 mod imports;
 mod ledger;
+mod spreadsheet;
 mod vault;
 
+pub use bills::*;
 pub use csv::{inspect_csv, CsvMapping, CsvPreview};
 pub use imports::*;
 pub use ledger::*;
@@ -30,4 +34,9 @@ fn invalid(message: impl Into<String>) -> FinanceError {
 
 fn digest(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
+}
+
+pub fn inspect_statement(name: &str, bytes: &[u8]) -> Result<CsvPreview> {
+    let normalized = document::normalize(name, bytes)?;
+    inspect_csv(normalized.as_deref().unwrap_or(bytes))
 }

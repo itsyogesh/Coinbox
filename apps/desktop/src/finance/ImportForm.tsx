@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { CreditCard, Landmark, Upload } from "lucide-react";
 import { errorMessage, finance, type Account, type AccountKind, type CsvMapping, type CsvPreview, type DateFormat } from "./api";
+import { EmailImport } from "./EmailImport";
 import sampleBank from "./fixtures/synthetic-bank-inr.csv?raw";
 import sampleCard from "./fixtures/synthetic-card-inr.csv?raw";
 
@@ -38,9 +39,9 @@ export function ImportForm({ book, accounts, busy, run }: {
     setReading(true);
     setError("");
     try {
-      if (next.size > 1024 * 1024) throw new Error("Choose a CSV of up to 1 MiB.");
+      if (next.size > 1024 * 1024) throw new Error("Choose a statement of up to 1 MiB.");
       const bytes = Array.from(new Uint8Array(await next.arrayBuffer()));
-      const preview = await finance.inspect(bytes);
+      const preview = await finance.inspect(next.name, bytes, book);
       const headers = preview.headers;
       const signedColumn = column(headers, ["amount", "transactionamount", "netamount"]);
       const debitColumn = column(headers, ["debit", "withdrawal", "withdrawals", "debitamount"]);
@@ -100,16 +101,17 @@ export function ImportForm({ book, accounts, busy, run }: {
   return (
     <section className="coinbox-card coinbox-import-form">
       <h2>Import a statement</h2>
-      <p className="coinbox-muted">Choose an INR bank or credit card CSV with a header row.</p>
+      <p className="coinbox-muted">Choose an bank or credit card statement in INR, with a header row.</p>
       <label className="coinbox-upload">
         <Upload size={20} aria-hidden="true" />
-        <span>{reading ? "Reading statement…" : file?.name ?? "Choose a CSV file"}</span>
-        <input type="file" accept=".csv,text/csv" disabled={busy || reading} onChange={(event) => {
+        <span>{reading ? "Reading statement…" : file?.name ?? "Choose a CSV, Excel, or PDF file"}</span>
+        <input type="file" accept=".csv,.xls,.xlsx,.pdf,text/csv,application/pdf" disabled={busy || reading} onChange={(event) => {
           const next = event.currentTarget.files?.[0];
           event.currentTarget.value = "";
           if (next) void pick(next);
         }} />
       </label>
+      <EmailImport book={book} disabled={busy || reading || file !== null} onSelect={pick} />
       <div className="coinbox-actions">
         <button type="button" className="coinbox-button secondary" disabled={busy || reading}
           onClick={() => void pick(new File([sampleBank], "synthetic-bank-inr.csv"), "bank")}><Landmark size={15} /> Use sample bank CSV</button>
@@ -126,7 +128,8 @@ export function ImportForm({ book, accounts, busy, run }: {
           <button type="submit" className="coinbox-button secondary" disabled={busy || !name.trim()}>Add account</button>
         </form>
         <form onSubmit={stage} className="coinbox-mapping">
-          <h3>Map statement columns</h3>
+          <div className="coinbox-section-title spread"><h3>Map statement columns</h3><button type="button" className="coinbox-source-link" disabled={busy} onClick={() => setFile(null)}>Clear file</button></div>
+          {/\.pdf$/i.test(file.name) && <p className="coinbox-warning">Compare extracted rows with the original PDF. Scanned statements can contain OCR errors.</p>}
           <p className="coinbox-muted">{file.preview.rows} data rows. Check the amount sign before staging.</p>
           <div className="coinbox-fields">
             <label>Import into account<select value={accountId} required onChange={(event) => {
@@ -154,7 +157,7 @@ export function ImportForm({ book, accounts, busy, run }: {
             {mode === "signed" && <label className="coinbox-check"><input type="checkbox" checked={invert} onChange={(event) => setInvert(event.target.checked)} /> Reverse signs (charges or withdrawals are positive in the file)</label>}
             {balance >= 0 && <label className="coinbox-check"><input type="checkbox" checked={owed} onChange={(event) => setOwed(event.target.checked)} /> Balance represents money owed</label>}
           </div>
-          <details><summary>Preview CSV columns</summary><div className="coinbox-scroll">
+          <details><summary>Preview statement columns</summary><div className="coinbox-scroll">
             <table><thead><tr>{file.preview.headers.map((header, index) => <th key={index}>{header || `Column ${index + 1}`}</th>)}</tr></thead>
               <tbody>{file.preview.examples.map((row, index) => <tr key={index}>{row.map((cell, i) => <td key={i}>{cell}</td>)}</tr>)}</tbody></table>
           </div></details>

@@ -1,6 +1,6 @@
 use coinbox_finance::{
-    inspect_csv, Book, Confirmation, ConfirmationResult, CsvPreview, Report, Review, SourceRow,
-    StageResult, Statement, Vault,
+    inspect_statement, Book, Confirmation, ConfirmationResult, CsvPreview, Report, Review,
+    SourceRow, StageResult, Statement, Vault,
 };
 use serde::Serialize;
 use std::{
@@ -18,6 +18,10 @@ pub struct FinanceState {
 }
 
 impl FinanceState {
+    pub(crate) fn path(&self) -> &Path {
+        &self.path
+    }
+
     pub fn new(app_data_dir: PathBuf) -> Self {
         let dir = std::env::var_os("COINBOX_FINANCE_DIR")
             .filter(|path| !path.is_empty())
@@ -29,7 +33,7 @@ impl FinanceState {
         }
     }
 
-    fn with_vault<T>(
+    pub(crate) fn with_vault<T>(
         &self,
         operation: impl FnOnce(&mut Vault) -> coinbox_finance::Result<T>,
     ) -> Result<T, String> {
@@ -144,8 +148,8 @@ pub async fn finance_add_account(
 }
 
 #[tauri::command]
-pub async fn finance_inspect_csv(bytes: Vec<u8>) -> Result<CsvPreview, String> {
-    inspect_csv(&bytes).map_err(message)
+pub async fn finance_inspect_csv(name: String, bytes: Vec<u8>) -> Result<CsvPreview, String> {
+    inspect_statement(&name, &bytes).map_err(message)
 }
 
 #[tauri::command]
@@ -207,8 +211,18 @@ pub async fn finance_source_file(
     book: String,
     source_id: i64,
 ) -> Result<String, String> {
-    let bytes = state.with_vault(|vault| vault.source_file(&book, source_id))?;
-    save_download(&app, &format!("coinbox-source-{source_id}"), "csv", &bytes)
+    let (bytes, extension) = state.with_vault(|vault| {
+        Ok((
+            vault.source_file(&book, source_id)?,
+            vault.source_extension(&book, source_id)?,
+        ))
+    })?;
+    save_download(
+        &app,
+        &format!("coinbox-source-{source_id}"),
+        extension,
+        &bytes,
+    )
 }
 
 #[tauri::command]
@@ -226,7 +240,58 @@ pub async fn finance_export(
     )
 }
 
-fn save_download(
+#[tauri::command]
+pub async fn finance_bills(
+    state: State<'_, FinanceState>,
+    book: String,
+) -> Result<Vec<coinbox_finance::Bill>, String> {
+    state.with_vault(|vault| vault.bills(&book))
+}
+
+#[tauri::command]
+pub async fn finance_save_bill(
+    state: State<'_, FinanceState>,
+    book: String,
+    id: Option<i64>,
+    input: coinbox_finance::BillInput,
+) -> Result<i64, String> {
+    state.with_vault(|vault| vault.save_bill(&book, id, &input))
+}
+
+#[tauri::command]
+pub async fn finance_remove_bill(
+    state: State<'_, FinanceState>,
+    book: String,
+    id: i64,
+) -> Result<(), String> {
+    state.with_vault(|vault| vault.remove_bill(&book, id))
+}
+
+#[tauri::command]
+pub async fn finance_export_fiscal_year(
+    app: AppHandle,
+    state: State<'_, FinanceState>,
+    book: String,
+    start_year: i32,
+    evidence: bool,
+) -> Result<String, String> {
+    let csv = state.with_vault(|vault| {
+        if evidence {
+            vault.export_evidence(&book, start_year)
+        } else {
+            vault.export_fiscal_year(&book, start_year)
+        }
+    })?;
+    let report = if evidence { "evidence" } else { "ledger" };
+    save_download(
+        &app,
+        &format!("coinbox-{book}-{start_year}-{report}"),
+        "csv",
+        csv.as_bytes(),
+    )
+}
+
+pub(crate) fn save_download(
     app: &AppHandle,
     stem: &str,
     extension: &str,

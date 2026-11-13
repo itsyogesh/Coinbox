@@ -1,0 +1,774 @@
+export const textEncoder = new TextEncoder();
+/** SP or HTAB, the only whitespace RFC 5322 and RFC 2045 give a meaning to in a line */
+export const isWsp = (c) => c === 0x20 || c === 0x09;
+const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+// Use a lookup table to find the index.
+const base64Lookup = new Uint8Array(256);
+for (let i = 0; i < base64Chars.length; i++) {
+    base64Lookup[base64Chars.charCodeAt(i)] = i;
+}
+export function decodeBase64(base64) {
+    // Padding carries no data, so the byte count comes from the payload alone. Sizing the
+    // buffer from the raw length instead treated '=' as a data character and left the
+    // output padded with NUL bytes, which then travelled into subjects and filenames.
+    let len = base64.length;
+    while (len > 0 && base64.charAt(len - 1) === '=') {
+        len--;
+    }
+    // A remainder of one character cannot encode a byte, it is a truncated group
+    if (len % 4 === 1) {
+        len--;
+    }
+    const remainder = len % 4;
+    const bufferLength = Math.floor(len / 4) * 3 + (remainder ? remainder - 1 : 0);
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const bytes = new Uint8Array(arrayBuffer);
+    let p = 0;
+    for (let i = 0; i < len; i += 4) {
+        let encoded1 = base64Lookup[base64.charCodeAt(i)];
+        let encoded2 = base64Lookup[base64.charCodeAt(i + 1)];
+        let encoded3 = base64Lookup[base64.charCodeAt(i + 2)];
+        let encoded4 = base64Lookup[base64.charCodeAt(i + 3)];
+        bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+        if (p < bufferLength) {
+            bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+        }
+        if (p < bufferLength) {
+            bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+        }
+    }
+    return arrayBuffer;
+}
+// Charset labels the WHATWG Encoding Standard does not list, but that name an encoding
+// TextDecoder can decode. Without an entry the TextDecoder constructor throws and
+// getDecoder falls back to windows-1252, turning the body into mojibake with nothing to
+// signal that the wrong decoder was used.
+//
+// Keys are normalized (see normalizeCharset), so one entry covers every spelling of a
+// label, eg. `eucjp` also catches `euc_jp`, `x-eucjp` and `x-euc-jp`. Only labels that
+// need real encoding knowledge belong here; anything that differs from a supported
+// label by nothing but an `x-` prefix or a separator is handled by normalization alone.
+const charsetAliases = new Map([
+    // Hebrew. The logical and explicit ordering variants share the iso-8859-8 index.
+    ['iso88598i', 'iso-8859-8'],
+    ['iso88598e', 'iso-8859-8'],
+    // Japanese. WHATWG shift_jis is the Windows-31J index, so cp932 text decodes
+    // identically, including the NEC and IBM extension rows.
+    ['shiftjis', 'shift_jis'],
+    ['windows31j', 'shift_jis'],
+    ['mskanji', 'shift_jis'],
+    ['eucjp', 'euc-jp'],
+    // ISO-2022-JP, including the -1 / -2 supersets. Escape sequences outside plain
+    // ISO-2022-JP (JIS X 0212, the non-Japanese G2 sets, and the SO/SI katakana shifts
+    // cp50222 uses) decode to replacement characters, but the Japanese text around them
+    // still comes out right.
+    ['iso2022jp', 'iso-2022-jp'],
+    ['iso2022jp1', 'iso-2022-jp'],
+    ['iso2022jp2', 'iso-2022-jp'],
+    ['junet', 'iso-2022-jp'],
+    // Korean. The WHATWG euc-kr index is the extended cp949 / UHC index.
+    ['euckr', 'euc-kr'],
+    ['uhc', 'euc-kr'],
+    // Thai.
+    ['tis620', 'windows-874']
+]);
+// Windows and IBM code page numbers, as written in labels like cp932, windows-932, ms932
+// or ibm932. An explicit allowlist rather than a derived one, because plenty of code
+// pages that appear in mail (cp437, cp850, cp1361) have no equivalent to map onto and
+// have to keep falling back.
+const codePageAliases = new Map([
+    ['932', 'shift_jis'],
+    ['936', 'gbk'],
+    ['949', 'euc-kr'],
+    ['950', 'big5'],
+    ['874', 'windows-874'],
+    // Microsoft's EUC-JP and ISO-2022-JP variants. euc-jp and iso-2022-jp cover
+    // everything they can express.
+    ['51932', 'euc-jp'],
+    ['50220', 'iso-2022-jp'],
+    ['50221', 'iso-2022-jp'],
+    ['50222', 'iso-2022-jp']
+]);
+const codePagePattern = /^(?:cp|windows|ms|ibm)(\d+)$/;
+// Strip the decorations mail clients add to an otherwise standard label: an x- vendor
+// prefix, the IANA cs- prefix, and any separators.
+function normalizeCharset(charset) {
+    return charset.replace(/^(?:x-ms-|x-|cs)/, '').replace(/[\s._-]+/g, '');
+}
+// Every label of the WHATWG Encoding Standard, https://encoding.spec.whatwg.org/encodings.json,
+// but for the UTF-16 family, which UTF16_LABELS resolves on its own.
+//
+// TextDecoder accepts these and nothing else, so a label outside the list is turned away
+// without constructing a decoder for it. Letting the constructor throw instead costs
+// several times the decode itself, and a message controls how often it happens: once
+// per encoded word, twice when the label also fails after normalization.
+export const ENCODING_LABELS = new Set([
+    // UTF-8
+    'unicode-1-1-utf-8 unicode11utf8 unicode20utf8 utf-8 utf8 x-unicode20utf8',
+    // IBM866
+    '866 cp866 csibm866 ibm866',
+    // ISO-8859-2
+    'csisolatin2 iso-8859-2 iso-ir-101 iso8859-2 iso88592 iso_8859-2 iso_8859-2:1987 l2 latin2',
+    // ISO-8859-3
+    'csisolatin3 iso-8859-3 iso-ir-109 iso8859-3 iso88593 iso_8859-3 iso_8859-3:1988 l3 latin3',
+    // ISO-8859-4
+    'csisolatin4 iso-8859-4 iso-ir-110 iso8859-4 iso88594 iso_8859-4 iso_8859-4:1988 l4 latin4',
+    // ISO-8859-5
+    'csisolatincyrillic cyrillic iso-8859-5 iso-ir-144 iso8859-5 iso88595 iso_8859-5 iso_8859-5:1988',
+    // ISO-8859-6
+    'arabic asmo-708 csiso88596e csiso88596i csisolatinarabic ecma-114 iso-8859-6 iso-8859-6-e',
+    'iso-8859-6-i iso-ir-127 iso8859-6 iso88596 iso_8859-6 iso_8859-6:1987',
+    // ISO-8859-7
+    'csisolatingreek ecma-118 elot_928 greek greek8 iso-8859-7 iso-ir-126 iso8859-7 iso88597 iso_8859-7',
+    'iso_8859-7:1987 sun_eu_greek',
+    // ISO-8859-8
+    'csiso88598e csisolatinhebrew hebrew iso-8859-8 iso-8859-8-e iso-ir-138 iso8859-8 iso88598 iso_8859-8',
+    'iso_8859-8:1988 visual',
+    // ISO-8859-8-I
+    'csiso88598i iso-8859-8-i logical',
+    // ISO-8859-10
+    'csisolatin6 iso-8859-10 iso-ir-157 iso8859-10 iso885910 l6 latin6',
+    // ISO-8859-13
+    'iso-8859-13 iso8859-13 iso885913',
+    // ISO-8859-14
+    'iso-8859-14 iso8859-14 iso885914',
+    // ISO-8859-15
+    'csisolatin9 iso-8859-15 iso8859-15 iso885915 iso_8859-15 l9',
+    // ISO-8859-16
+    'iso-8859-16',
+    // KOI8-R
+    'cskoi8r koi koi8 koi8-r koi8_r',
+    // KOI8-U
+    'koi8-ru koi8-u',
+    // macintosh
+    'csmacintosh mac macintosh x-mac-roman',
+    // windows-874
+    'dos-874 iso-8859-11 iso8859-11 iso885911 tis-620 windows-874',
+    // windows-1250
+    'cp1250 windows-1250 x-cp1250',
+    // windows-1251
+    'cp1251 windows-1251 x-cp1251',
+    // windows-1252
+    'ansi_x3.4-1968 ascii cp1252 cp819 csisolatin1 ibm819 iso-8859-1 iso-ir-100 iso8859-1 iso88591',
+    'iso_8859-1 iso_8859-1:1987 l1 latin1 us-ascii windows-1252 x-cp1252',
+    // windows-1253
+    'cp1253 windows-1253 x-cp1253',
+    // windows-1254
+    'cp1254 csisolatin5 iso-8859-9 iso-ir-148 iso8859-9 iso88599 iso_8859-9 iso_8859-9:1989 l5 latin5',
+    'windows-1254 x-cp1254',
+    // windows-1255
+    'cp1255 windows-1255 x-cp1255',
+    // windows-1256
+    'cp1256 windows-1256 x-cp1256',
+    // windows-1257
+    'cp1257 windows-1257 x-cp1257',
+    // windows-1258
+    'cp1258 windows-1258 x-cp1258',
+    // x-mac-cyrillic
+    'x-mac-cyrillic x-mac-ukrainian',
+    // GBK
+    'chinese csgb2312 csiso58gb231280 gb2312 gb_2312 gb_2312-80 gbk iso-ir-58 x-gbk',
+    // gb18030
+    'gb18030',
+    // Big5
+    'big5 big5-hkscs cn-big5 csbig5 x-x-big5',
+    // EUC-JP
+    'cseucpkdfmtjapanese euc-jp x-euc-jp',
+    // ISO-2022-JP
+    'csiso2022jp iso-2022-jp',
+    // Shift_JIS
+    'csshiftjis ms932 ms_kanji shift-jis shift_jis sjis windows-31j x-sjis',
+    // EUC-KR
+    'cseuckr csksc56011987 euc-kr iso-ir-149 korean ks_c_5601-1987 ks_c_5601-1989 ksc5601 ksc_5601',
+    'windows-949',
+    // replacement
+    'csiso2022kr hz-gb-2312 iso-2022-cn iso-2022-cn-ext iso-2022-kr replacement',
+    // x-user-defined
+    'x-user-defined'
+]
+    .join(' ')
+    .split(' '));
+// The labels the Encoding Standard maps to the replacement encoding: ISO-2022-KR,
+// ISO-2022-CN and HZ-GB-2312, whose escape and shift sequences let the same bytes read as
+// text to one decoder and as markup to another. A browser decodes a document in any of
+// them to a single U+FFFD for that reason, and TextDecoder refuses to be constructed for
+// them. They used to fall through to the UTF-8 or windows-1252 reading, which is the
+// markup reading: a body of `ESC$)C SO <img onerror=…> SI` under charset=iso-2022-kr is
+// Hangul to Python and a scanner built on it, and was an image tag here.
+const REPLACEMENT_LABELS = new Set([
+    'csiso2022kr',
+    'hz-gb-2312',
+    'iso-2022-cn',
+    'iso-2022-cn-ext',
+    'iso-2022-kr',
+    'replacement'
+]);
+// The decoder of the replacement encoding: U+FFFD once there is a byte to replace
+const replacementDecoder = {
+    encoding: 'replacement',
+    decode: input => (input && input.byteLength ? '�' : '')
+};
+// The UTF-16 labels honoured and the label of the standard each stands for: the spellings
+// that Python and iconv-lite both decode, and nothing else. Matched as written only, never
+// after normalization: `x-utf16` is known to neither.
+//
+// A label that one of the two reads and the other does not is the split this table
+// exists to close: under it a scanner built on the other reads the bytes as single byte
+// text, NUL interleaved and inert, where they decoded to markup here. So the standard's
+// `unicode`, `csunicode`, `iso-10646-ucs-2`, `unicodefeff` and `unicodefffe`, which
+// neither knows, are out, and so are `ucs-2`, `ucs2`, `utf16le` and `utf16be`, which
+// iconv-lite alone knows (and `ucs-2` as little endian whatever mark the bytes carry).
+// They all fall back like any unknown label.
+const UTF16_LABELS = new Map([
+    ['utf-16', 'utf-16'],
+    ['utf16', 'utf-16'],
+    ['utf_16', 'utf-16'],
+    ['utf-16le', 'utf-16le'],
+    ['utf-16be', 'utf-16be']
+]);
+/**
+ * The label of the Encoding Standard a charset resolves to, as written or through the
+ * alias tables, or null when it names no encoding the standard lists
+ */
+function resolveLabel(charset) {
+    charset = (charset || 'utf8').trim().toLowerCase();
+    // The label as written first, so the alias table only ever adds to what the standard
+    // lists instead of shadowing it
+    if (ENCODING_LABELS.has(charset)) {
+        return charset;
+    }
+    const utf16 = UTF16_LABELS.get(charset);
+    if (utf16) {
+        return utf16;
+    }
+    const normalized = normalizeCharset(charset);
+    const codePage = normalized.match(codePagePattern);
+    // The normalized label is itself the last candidate, which resolves everything that
+    // differed from a listed label only by a prefix or a separator, eg. x-big5.
+    const alias = (codePage && codePageAliases.get(codePage[1])) || charsetAliases.get(normalized) || normalized;
+    return ENCODING_LABELS.has(alias) ? alias : null;
+}
+// Decoders by label, or null where the runtime refuses the label (an encoding a runtime
+// was built without). Only labels from the list above are stored, so the map can not grow
+// past it however many labels a message makes up.
+//
+// Sharing a decoder is safe because nothing decodes with `stream: true`, so every
+// decode() call starts from a fresh state.
+const decoders = new Map();
+function tryDecoder(label) {
+    if (REPLACEMENT_LABELS.has(label)) {
+        return replacementDecoder;
+    }
+    let decoder = decoders.get(label);
+    if (decoder === undefined) {
+        decoder = null;
+        try {
+            decoder = new TextDecoder(label);
+        }
+        catch {
+            // not supported by this runtime
+        }
+        decoders.set(label, decoder);
+    }
+    return decoder;
+}
+// Every runtime has utf-8, so a decoder is always returned even where windows-1252 is
+// missing, rather than letting the caller fail on a null decoder
+const utf8Decoder = new TextDecoder();
+/**
+ * Finds the decoder for a charset label, or null when the runtime has no encoding for it
+ */
+function findDecoder(charset) {
+    const label = resolveLabel(charset);
+    return label ? tryDecoder(label) : null;
+}
+export function getDecoder(charset) {
+    return findDecoder(charset) || tryDecoder('windows-1252') || utf8Decoder;
+}
+const UTF16_ENCODINGS = new Set(['utf-16le', 'utf-16be']);
+// The label of UTF-16 that leaves the byte order to the bytes, which a byte order mark
+// then decides, as it does for Python's utf-16 codec and for iconv-lite. The labels that
+// name the order, utf-16le and utf-16be, are read as they say whatever mark the bytes
+// carry, and no label honours a UTF-8 mark. The Encoding Standard lets any mark override
+// any label, but Python and mailparser do not, and following it here rendered as markup
+// under charset=utf-16be a body that a scanner built on either reads as CJK text.
+const UTF16_UNORDERED_LABELS = new Set(['utf-16']);
+/**
+ * The byte order a UTF-16 byte order mark at the start of the bytes names, or null without one
+ */
+function bomByteOrder(bytes) {
+    if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+        return 'utf-16be';
+    }
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+        return 'utf-16le';
+    }
+    return null;
+}
+/**
+ * Whether the bytes are well formed UTF-8. A scan rather than a fatal TextDecoder, since
+ * the exception one throws costs more than the decode itself and a message decides how
+ * many lines throw it.
+ */
+export function isUtf8(bytes) {
+    for (let i = 0; i < bytes.length;) {
+        const lead = bytes[i];
+        if (lead < 0x80) {
+            i++;
+            continue;
+        }
+        // The number of continuation bytes, and the range the first of them may take,
+        // which is what rules out overlong forms, surrogates and code points past U+10FFFF
+        let count;
+        if (lead >= 0xc2 && lead <= 0xdf) {
+            count = 1;
+        }
+        else if (lead >= 0xe0 && lead <= 0xef) {
+            count = 2;
+        }
+        else if (lead >= 0xf0 && lead <= 0xf4) {
+            count = 3;
+        }
+        else {
+            return false;
+        }
+        if (i + count >= bytes.length) {
+            return false;
+        }
+        const second = bytes[i + 1];
+        const min = lead === 0xe0 ? 0xa0 : lead === 0xf0 ? 0x90 : 0x80;
+        const max = lead === 0xed ? 0x9f : lead === 0xf4 ? 0x8f : 0xbf;
+        if (second < min || second > max) {
+            return false;
+        }
+        for (let k = 2; k <= count; k++) {
+            if ((bytes[i + k] & 0xc0) !== 0x80) {
+                return false;
+            }
+        }
+        i += count + 1;
+    }
+    return true;
+}
+/**
+ * Decodes bytes whose encoding is not known: as UTF-8 when they are well formed UTF-8, as
+ * windows-1252 otherwise.
+ *
+ * A message that declares no charset, or one the runtime has never heard of, usually
+ * predates RFC 6532 or comes from a generator that never heard of it either, and its 8-bit
+ * bytes are a legacy single byte encoding far more often than broken UTF-8. windows-1252
+ * is the fallback the WHATWG Encoding Standard prescribes and what a mail client's default
+ * charset amounts to, and it reads such text rather than filling it with replacement
+ * characters.
+ *
+ * @param bytes Bytes to decode
+ * @param utf8 The UTF-8 decoder to use, header lines bring one that keeps a BOM
+ * @return Decoded text
+ */
+export function decodeUtf8OrWindows1252(bytes, utf8 = utf8Decoder) {
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    return isUtf8(view) ? utf8.decode(view) : getDecoder('windows-1252').decode(view);
+}
+/**
+ * Decodes bytes in a named charset. A label the runtime does not know is no charset at
+ * all, see decodeUtf8OrWindows1252.
+ *
+ * @param bytes Bytes to decode
+ * @param charset Charset label
+ * @return Decoded text
+ */
+export function decodeCharset(bytes, charset) {
+    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    const label = resolveLabel(charset);
+    let decoder = label ? tryDecoder(label) : null;
+    if (label && UTF16_UNORDERED_LABELS.has(label)) {
+        // `utf-16` reads as little endian on its own, so a byte order mark decides the
+        // order. Read in the other order the bytes are swapped pairs of the characters
+        // every other reader got: FE FF and big endian text under charset=utf-16 was CJK
+        // text to Python and a browser, and here it was the little endian reading, which
+        // the sender picks to be markup.
+        const order = bomByteOrder(view);
+        decoder = (order && tryDecoder(order)) || decoder;
+    }
+    return decoder ? decoder.decode(view) : decodeUtf8OrWindows1252(view);
+}
+// The charset an html document names for itself, in a `<meta charset>` or in the
+// Content-Type `<meta http-equiv>`, read from the first 1024 bytes like a browser's prescan.
+// Tags are found with indexOf and the attribute is matched inside one tag at a time: a
+// single pattern over the whole head rescans it once for every `<meta` in it, and a head of
+// nothing but `<meta ` took it quadratic
+const META_PRESCAN_BYTES = 1024;
+const CHARSET_ATTRIBUTE = /charset\s*=\s*["']?\s*([^\s"';>]+)/;
+function sniffHtmlCharset(bytes) {
+    const head = utf8Decoder.decode(bytes.subarray(0, META_PRESCAN_BYTES)).toLowerCase();
+    let pos = 0;
+    while ((pos = head.indexOf('<meta', pos)) >= 0) {
+        let end = head.indexOf('>', pos);
+        if (end < 0) {
+            end = head.length;
+        }
+        const match = CHARSET_ATTRIBUTE.exec(head.slice(pos, end));
+        if (match) {
+            return match[1];
+        }
+        pos = end;
+    }
+    return null;
+}
+/**
+ * Decodes the bytes of a text part: in the declared charset, otherwise in the one an html
+ * part names for itself, otherwise as UTF-8 or windows-1252 depending on what the bytes
+ * turn out to be, see decodeUtf8OrWindows1252.
+ *
+ * @param bytes Decoded body of the part
+ * @param charset The charset parameter of the Content-Type, if any
+ * @param html Whether the part is html, which may name its own charset
+ * @return The text of the part
+ */
+export function decodeText(bytes, charset, html) {
+    const view = new Uint8Array(bytes);
+    if (charset) {
+        return decodeCharset(view, charset);
+    }
+    // The HTML prescan has two overrides, and for a reason: a `<meta>` tag that could be
+    // read as ASCII proves the document is not UTF-16, so such a label is read as UTF-8,
+    // and x-user-defined is read as windows-1252. Without them a sender picks the encoding
+    // that turns bytes a scanner sees as inert into markup for this parser alone. A label
+    // of the replacement encoding is the replacement text, as it is for a browser, see
+    // tryDecoder
+    const sniffed = html ? sniffHtmlCharset(view) : null;
+    const decoder = sniffed ? findDecoder(sniffed) : null;
+    if (!decoder || UTF16_ENCODINGS.has(decoder.encoding)) {
+        return decodeUtf8OrWindows1252(view);
+    }
+    return (decoder.encoding === 'x-user-defined' ? getDecoder('windows-1252') : decoder).decode(view);
+}
+/**
+ * Converts a Blob into an ArrayBuffer
+ * @param blob Blob to convert
+ * @returns Converted value
+ */
+export async function blobToArrayBuffer(blob) {
+    if ('arrayBuffer' in blob) {
+        return await blob.arrayBuffer();
+    }
+    const fr = new FileReader();
+    return new Promise((resolve, reject) => {
+        fr.onload = () => {
+            resolve(fr.result);
+        };
+        fr.onerror = () => {
+            reject(fr.error);
+        };
+        fr.readAsArrayBuffer(blob);
+    });
+}
+/**
+ * Numeric value of an ASCII hex digit
+ *
+ * @param c Byte to read
+ * @return Value 0-15, or -1 if the byte is not a hex digit
+ */
+export function hexNibble(c) {
+    if (c >= 0x30 /* 0 */ && c <= 0x39 /* 9 */) {
+        return c - 0x30;
+    }
+    if (c >= 0x61 /* a */ && c <= 0x66 /* f */) {
+        return c - 0x61 + 10;
+    }
+    if (c >= 0x41 /* A */ && c <= 0x46 /* F */) {
+        return c - 0x41 + 10;
+    }
+    return -1;
+}
+/**
+ * Folds the line breaks of a header value into spaces.
+ *
+ * A header value holds no line breaks. The raw value is folded when the headers are
+ * processed, see processHeaders in mime-node.ts, an RFC 2047 encoded word is folded as it
+ * is decoded, and an RFC 2231 filename is folded where the attachment is built. Otherwise a
+ * decoded name, subject or filename written into a header of an outgoing message by the
+ * consumer ends the header early and starts another one with the rest of the value.
+ *
+ * The RFC 2231 percent decoder itself does not fold: it also produces the boundary, and a
+ * boundary holding a line break can never match a line. That has to stay so, or a message
+ * that has no parts for every other parser would have them here.
+ *
+ * @param str Header value
+ * @return The value with every run of CR and LF replaced by a space
+ */
+export function foldLineBreaks(str) {
+    return str.replace(/[\r\n]+/g, ' ');
+}
+/**
+ * Decode a complete mime word encoded string
+ *
+ * @param charset Character set of the encoded word
+ * @param encoding `Q` or `B`
+ * @param str Mime word encoded string
+ * @return Decoded unicode string
+ */
+export function decodeWord(charset, encoding, str) {
+    // RFC2231 added language tag to the encoding
+    // see: https://tools.ietf.org/html/rfc2231#section-5
+    // this implementation silently ignores this tag
+    let splitPos = charset.indexOf('*');
+    if (splitPos >= 0) {
+        charset = charset.slice(0, splitPos);
+    }
+    encoding = encoding.toUpperCase();
+    let byteStr;
+    if (encoding === 'Q') {
+        str = str
+            // remove spaces between = and hex char, this might indicate invalidly applied line splitting
+            .replace(/=\s+([0-9a-fA-F])/g, '=$1')
+            // convert all underscores to spaces
+            .replace(/[_\s]/g, ' ');
+        let buf = textEncoder.encode(str);
+        let encodedBytes = [];
+        for (let i = 0, len = buf.length; i < len; i++) {
+            let c = buf[i];
+            if (i <= len - 2 && c === 0x3d /* = */) {
+                let high = hexNibble(buf[i + 1]);
+                let low = hexNibble(buf[i + 2]);
+                if (high >= 0 && low >= 0) {
+                    encodedBytes.push((high << 4) | low);
+                    i += 2;
+                    continue;
+                }
+            }
+            encodedBytes.push(c);
+        }
+        byteStr = new ArrayBuffer(encodedBytes.length);
+        let dataView = new DataView(byteStr);
+        for (let i = 0, len = encodedBytes.length; i < len; i++) {
+            dataView.setUint8(i, encodedBytes[i]);
+        }
+    }
+    else if (encoding === 'B') {
+        byteStr = decodeBase64(str.replace(/[^a-zA-Z0-9\+\/=]+/g, ''));
+    }
+    else {
+        // keep as is, convert ArrayBuffer to unicode string, assume utf8
+        byteStr = textEncoder.encode(str);
+    }
+    return foldLineBreaks(decodeCharset(byteStr, charset));
+}
+// A charset label runs to the next '?' so that labels containing punctuation, eg.
+// ISO_8859-1:1987, are recognised. Whitespace is excluded so a stray '=?' in running text
+// can not swallow the rest of the line.
+const ENCODED_WORD_PATTERN = '=\\?([^?\\s]+)\\?([QqBb])\\?([^?]*)\\?=';
+const ENCODED_WORD_REGEX = new RegExp(ENCODED_WORD_PATTERN, 'g');
+// Only linear whitespace separates encoded words, the rest is content
+const WORD_SEPARATOR_REGEX = /^[ \t\r\n]+$/;
+const ENCODED_WORDS_ONLY_REGEX = new RegExp(`^(?:${ENCODED_WORD_PATTERN}\\s*)+$`);
+/**
+ * Checks whether a string is nothing but RFC 2047 encoded words. Kept next to the grammar
+ * it depends on, so the pattern has a single definition.
+ *
+ * @param str String to check
+ * @return true if the string holds encoded words and nothing else
+ */
+export function isEncodedWordsOnly(str) {
+    return ENCODED_WORDS_ONLY_REGEX.test(str);
+}
+/**
+ * Splits a string into encoded words and the literal text around them.
+ *
+ * Working on a token list rather than marking joinable words with an in band sentinel
+ * means the input can not contain the marker, which previously let a sender delete text
+ * from a subject or a display name by writing the marker into the header themselves.
+ *
+ * @param str String to split
+ * @return Array of `{text}` and `{charset, encoding, encodedText}` tokens
+ */
+function splitEncodedWords(str) {
+    const tokens = [];
+    ENCODED_WORD_REGEX.lastIndex = 0;
+    let pos = 0;
+    let match;
+    while ((match = ENCODED_WORD_REGEX.exec(str))) {
+        if (match.index > pos) {
+            tokens.push({ text: str.substring(pos, match.index) });
+        }
+        tokens.push({ charset: match[1], encoding: match[2], encodedText: match[3] });
+        pos = match.index + match[0].length;
+    }
+    if (pos < str.length) {
+        tokens.push({ text: str.substring(pos) });
+    }
+    return tokens;
+}
+/**
+ * Checks if two adjacent encoded words may be decoded as a single unit. A multi byte
+ * character is often split across two words, so the bytes have to be concatenated before
+ * they are decoded. Base64 additionally needs the left chunk to end on a group boundary,
+ * otherwise the concatenation shifts every byte that follows.
+ */
+function canJoinWords(left, right) {
+    const encoding = left.encoding.toUpperCase();
+    if (left.charset !== right.charset || encoding !== right.encoding.toUpperCase()) {
+        return false;
+    }
+    if (encoding === 'B') {
+        // The length of a string built by concatenation is stored with it, but a regex or
+        // endsWith on it flattens everything joined so far first. Testing the growing text
+        // for a pad on every word made a subject of a hundred thousand short words cost
+        // seconds, so the pad is tracked as the words are appended instead.
+        return left.encodedText.length % 4 === 0 && !left.padded;
+    }
+    return true;
+}
+/**
+ * Decodes a token list into a string, optionally merging adjacent encoded words.
+ *
+ * @param tokens Tokens from splitEncodedWords
+ * @param joinWords Whether adjacent encoded words may be decoded as one unit
+ * @return Decoded string
+ */
+function renderTokens(tokens, joinWords) {
+    let result = '';
+    let pending = null;
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        if (token.text !== undefined) {
+            // whitespace between two encoded words is a folding artifact, not content
+            const nextToken = tokens[i + 1];
+            if (pending && nextToken && nextToken.text === undefined && WORD_SEPARATOR_REGEX.test(token.text)) {
+                continue;
+            }
+            if (pending) {
+                result += decodeWord(pending.charset, pending.encoding, pending.encodedText);
+                pending = null;
+            }
+            result += token.text;
+            continue;
+        }
+        if (pending && joinWords && canJoinWords(pending, token)) {
+            pending.encodedText += token.encodedText;
+            pending.padded = token.encodedText.endsWith('=');
+            continue;
+        }
+        if (pending) {
+            result += decodeWord(pending.charset, pending.encoding, pending.encodedText);
+        }
+        pending = {
+            charset: token.charset,
+            encoding: token.encoding,
+            encodedText: token.encodedText,
+            padded: token.encodedText.endsWith('=')
+        };
+    }
+    if (pending) {
+        result += decodeWord(pending.charset, pending.encoding, pending.encodedText);
+    }
+    return result;
+}
+/**
+ * Decodes RFC 2047 encoded words in a string
+ *
+ * @param str String that may contain encoded words
+ * @return Unicode string with every encoded word decoded
+ */
+export function decodeWords(str) {
+    const tokens = splitEncodedWords((str || '').toString());
+    const result = renderTokens(tokens, true);
+    // A replacement character means the bytes did not decode, which happens when two
+    // words were joined that should have stayed apart. Retry keeping them separate.
+    return result.indexOf('\ufffd') < 0 ? result : renderTokens(tokens, false);
+}
+export function decodeURIComponentWithCharset(encodedStr, charset) {
+    charset = charset || 'utf-8';
+    let encodedBytes = [];
+    for (let i = 0; i < encodedStr.length; i++) {
+        let c = encodedStr.charAt(i);
+        // -1 past the end of the string as well, since charCodeAt returns NaN there
+        const high = c === '%' ? hexNibble(encodedStr.charCodeAt(i + 1)) : -1;
+        const low = high >= 0 ? hexNibble(encodedStr.charCodeAt(i + 2)) : -1;
+        if (low >= 0) {
+            // encoded sequence
+            encodedBytes.push((high << 4) | low);
+            i += 2;
+        }
+        else if (c.charCodeAt(0) > 126) {
+            const bytes = textEncoder.encode(c);
+            for (let j = 0; j < bytes.length; j++) {
+                encodedBytes.push(bytes[j]);
+            }
+        }
+        else {
+            // "normal" char
+            encodedBytes.push(c.charCodeAt(0));
+        }
+    }
+    const byteStr = new ArrayBuffer(encodedBytes.length);
+    const dataView = new DataView(byteStr);
+    for (let i = 0, len = encodedBytes.length; i < len; i++) {
+        dataView.setUint8(i, encodedBytes[i]);
+    }
+    return decodeCharset(byteStr, charset);
+}
+export function decodeParameterValueContinuations(header) {
+    // handle parameter value continuations
+    // https://tools.ietf.org/html/rfc2231#section-3
+    // preprocess values
+    let paramKeys = new Map();
+    Object.keys(header.params).forEach(key => {
+        let match = key.match(/\*((\d+)\*?)?$/);
+        if (!match) {
+            // nothing to do here, does not seem like a continuation param
+            return;
+        }
+        let actualKey = key.slice(0, match.index).toLowerCase();
+        let nr = Number(match[2]) || 0;
+        let paramVal = paramKeys.get(actualKey);
+        if (!paramVal) {
+            paramVal = {
+                charset: null,
+                values: []
+            };
+            paramKeys.set(actualKey, paramVal);
+        }
+        let value = header.params[key];
+        // RFC 2231 section 4.1: only a section whose name ends in '*' is percent encoded.
+        // A plain `name*0=` section is literal text, so decoding it invents characters
+        // that never appeared on the wire, turning `a%2F..%2Fetc` into a path traversal.
+        let encoded = match[0].charAt(match[0].length - 1) === '*';
+        if (nr === 0 && encoded && (match = value.match(/^([^']*)'[^']*'(.*)$/))) {
+            paramVal.charset = match[1] || 'utf-8';
+            value = match[2];
+        }
+        paramVal.values.push({ nr, value, encoded });
+        // remove the old reference
+        delete header.params[key];
+    });
+    paramKeys.forEach((paramVal, key) => {
+        if (Object.prototype.hasOwnProperty.call(header.params, key)) {
+            // The same name was also given as a plain parameter, which the starred keys were
+            // just deleted from around, so this write would be the only one here to override a
+            // name already taken. `filename="plain"; filename*0="cont"` resolves to the plain
+            // parameter either way round, so the reading does not come down to which of the
+            // two spellings the sender put first. See storeParam in mime-node.ts
+            return;
+        }
+        let result = '';
+        // Adjacent encoded sections are decoded together, because a single multi byte
+        // character may be percent encoded across a section boundary.
+        let pending = '';
+        for (let part of paramVal.values.sort((a, b) => a.nr - b.nr)) {
+            if (part.encoded) {
+                pending += part.value;
+                continue;
+            }
+            if (pending) {
+                result += decodeURIComponentWithCharset(pending, paramVal.charset);
+                pending = '';
+            }
+            result += part.value;
+        }
+        if (pending) {
+            result += decodeURIComponentWithCharset(pending, paramVal.charset);
+        }
+        header.params[key] = result;
+    });
+}

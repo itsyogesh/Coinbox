@@ -259,6 +259,15 @@ impl Vault {
     }
 
     pub fn export_csv(&self, book: &str) -> Result<String> {
+        self.export_period(book, None)
+    }
+
+    pub fn export_fiscal_year(&self, book: &str, start_year: i32) -> Result<String> {
+        let (start, end) = fiscal_period(start_year)?;
+        self.export_period(book, Some((&start, &end)))
+    }
+
+    fn export_period(&self, book: &str, period: Option<(&str, &str)>) -> Result<String> {
         let report = self.report(book)?;
         let mut csv = String::new();
         write_csv_row(
@@ -276,6 +285,11 @@ impl Vault {
             ],
         );
         for entry in report.entries {
+            if let Some((start, end)) = period {
+                if entry.date.as_str() < start || entry.date.as_str() >= end {
+                    continue;
+                }
+            }
             let references = entry
                 .sources
                 .iter()
@@ -304,6 +318,16 @@ impl Vault {
         }
         Ok(csv)
     }
+}
+
+pub(crate) fn fiscal_period(start_year: i32) -> Result<(String, String)> {
+    if !(1900..9999).contains(&start_year) {
+        return Err(invalid("Enter a valid fiscal start year."));
+    }
+    Ok((
+        format!("{start_year:04}-04-01"),
+        format!("{:04}-04-01", start_year + 1),
+    ))
 }
 
 pub(crate) fn require_book(conn: &Connection, book: &str) -> Result<()> {
@@ -441,7 +465,7 @@ fn decimal(amount: &str) -> String {
     format!("{sign}{whole}.{fraction}")
 }
 
-fn spreadsheet_text(text: &str) -> String {
+pub(crate) fn spreadsheet_text(text: &str) -> String {
     if text
         .trim_start()
         .starts_with(['=', '+', '-', '@', '＝', '＋', '－', '＠'])

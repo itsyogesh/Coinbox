@@ -8,7 +8,7 @@ use std::{
 };
 
 const APPLICATION_ID: i64 = 1128416854;
-const VERSION: i64 = 1;
+const VERSION: i64 = 2;
 pub const MAX_BACKUP_BYTES: usize = 32 * 1024 * 1024;
 
 pub struct Vault {
@@ -28,6 +28,8 @@ impl Vault {
             let mut conn = keyed_connection(temp.path(), passphrase)?;
             let tx = conn.transaction()?;
             tx.execute_batch(include_str!("schema.sql"))?;
+            tx.execute_batch(include_str!("bills.sql"))?;
+            tx.pragma_update(None, "user_version", VERSION)?;
             tx.commit()?;
             verify(&conn)?;
         }
@@ -37,7 +39,8 @@ impl Vault {
     }
 
     pub fn open(path: &Path, passphrase: &str) -> Result<Self> {
-        let conn = keyed_connection(path, passphrase)?;
+        let mut conn = keyed_connection(path, passphrase)?;
+        migrate(&mut conn)?;
         verify(&conn)?;
         Ok(Self {
             conn,
@@ -71,7 +74,8 @@ impl Vault {
         temp.write_all(bytes)?;
         temp.as_file().sync_all()?;
         {
-            let conn = keyed_connection(temp.path(), passphrase)?;
+            let mut conn = keyed_connection(temp.path(), passphrase)?;
+            migrate(&mut conn)?;
             verify(&conn)?;
             let mut integrity = conn.prepare("PRAGMA integrity_check")?;
             let results = integrity
@@ -163,5 +167,17 @@ fn verify(conn: &Connection) -> Result<()> {
             "This file is not a supported Coinbox finance vault.",
         ));
     }
+    Ok(())
+}
+
+fn migrate(conn: &mut Connection) -> Result<()> {
+    let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    let id: i64 = tx.pragma_query_value(None, "application_id", |row| row.get(0))?;
+    let version: i64 = tx.pragma_query_value(None, "user_version", |row| row.get(0))?;
+    if id == APPLICATION_ID && version == 1 {
+        tx.execute_batch(include_str!("bills.sql"))?;
+        tx.pragma_update(None, "user_version", VERSION)?;
+    }
+    tx.commit()?;
     Ok(())
 }

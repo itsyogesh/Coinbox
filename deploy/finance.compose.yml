@@ -1,0 +1,28 @@
+services:
+  coinbox:
+    build:
+      context: ..
+      dockerfile: deploy/finance.Dockerfile
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      COINBOX_SERVER_PASSPHRASE_FILE: /run/secrets/finance_passphrase
+      COINBOX_SERVER_ADMIN_TOKEN_FILE: /run/secrets/finance_admin_token
+    secrets:
+      - finance_passphrase
+      - finance_admin_token
+    volumes:
+      - vault:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=96m
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+secrets:
+  finance_passphrase:
+    file: ${COINBOX_SECRETS_DIR:?Set COINBOX_SECRETS_DIR}/finance-passphrase
+  finance_admin_token:
+    file: ${COINBOX_SECRETS_DIR:?Set COINBOX_SECRETS_DIR}/finance-admin-token
+volumes:
+  vault:
