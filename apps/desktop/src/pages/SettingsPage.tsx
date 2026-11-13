@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Sun,
@@ -6,9 +7,6 @@ import {
   Monitor,
   DollarSign,
   Key,
-  Database,
-  Shield,
-  Globe,
   Check,
   ExternalLink,
   Loader2,
@@ -55,10 +53,9 @@ const itemVariants = {
 interface RpcFieldState {
   value: string;
   status: "idle" | "testing" | "success" | "error";
-  error?: string;
 }
 
-type RpcChain = "bitcoin" | "ethereum" | "arbitrum" | "optimism" | "base" | "polygon";
+type RpcChain = "ethereum" | "arbitrum" | "optimism" | "base" | "polygon";
 type RpcFields = Record<RpcChain, RpcFieldState>;
 
 export default function SettingsPage() {
@@ -75,18 +72,12 @@ export default function SettingsPage() {
 
   // Local state for RPC field inputs and testing status
   const [rpcFields, setRpcFields] = useState<RpcFields>(() => ({
-    bitcoin: { value: rpcEndpoints.bitcoin || "", status: "idle" },
     ethereum: { value: rpcEndpoints.ethereum || "", status: "idle" },
     arbitrum: { value: rpcEndpoints.arbitrum || "", status: "idle" },
     optimism: { value: rpcEndpoints.optimism || "", status: "idle" },
     base: { value: rpcEndpoints.base || "", status: "idle" },
     polygon: { value: rpcEndpoints.polygon || "", status: "idle" },
   }));
-
-  const [apiKeyInput, setApiKeyInput] = useState(apiKeys.anthropic || "");
-  const [apiKeyStatus, setApiKeyStatus] = useState<
-    "idle" | "testing" | "valid" | "invalid"
-  >("idle");
 
   // Etherscan API key state
   const [etherscanKeyInput, setEtherscanKeyInput] = useState(apiKeys.etherscan || "");
@@ -112,23 +103,11 @@ export default function SettingsPage() {
   const testAndSaveRpc = async (chain: RpcChain) => {
     const field = rpcFields[chain];
     if (!field.value.trim()) {
-      // Clear the endpoint if empty
-      if (chain !== "bitcoin") {
-        setRpcEndpoint(chain, "");
-      }
+      setRpcEndpoint(chain, "");
+      clearClientCache();
       setRpcFields((prev) => ({
         ...prev,
         [chain]: { value: field.value, status: "idle" as const },
-      }));
-      return;
-    }
-
-    // Skip testing for Bitcoin (different protocol)
-    if (chain === "bitcoin") {
-      // Bitcoin RPC is handled separately (Electrum protocol)
-      setRpcFields((prev) => ({
-        ...prev,
-        [chain]: { value: field.value, status: "success" as const },
       }));
       return;
     }
@@ -152,7 +131,7 @@ export default function SettingsPage() {
     } else {
       setRpcFields((prev) => ({
         ...prev,
-        [chain]: { value: field.value, status: "error" as const, error: result.error },
+        [chain]: { value: field.value, status: "error" as const },
       }));
     }
   };
@@ -163,28 +142,6 @@ export default function SettingsPage() {
     setEtherscanKeyStatus("saved");
     // Reset status after 2 seconds
     setTimeout(() => setEtherscanKeyStatus("idle"), 2000);
-  };
-
-  // Verify API key (placeholder - would need actual verification)
-  const verifyApiKey = async () => {
-    if (!apiKeyInput.trim()) {
-      setApiKey("anthropic", "");
-      setApiKeyStatus("idle");
-      return;
-    }
-
-    setApiKeyStatus("testing");
-
-    // Simple format validation for Anthropic API keys
-    // Real verification would require an API call
-    setTimeout(() => {
-      if (apiKeyInput.startsWith("sk-ant-")) {
-        setApiKey("anthropic", apiKeyInput);
-        setApiKeyStatus("valid");
-      } else {
-        setApiKeyStatus("invalid");
-      }
-    }, 500);
   };
 
   const themes: { value: Theme; label: string; icon: React.ElementType }[] = [
@@ -199,41 +156,12 @@ export default function SettingsPage() {
     symbol: config.symbol,
   }));
 
-  const rpcEndpointConfig: Array<{
-    chain: RpcChain;
-    label: string;
-    placeholder: string;
-  }> = [
-    {
-      chain: "bitcoin",
-      label: "Bitcoin (Electrum)",
-      placeholder: "ssl://electrum.blockstream.info:60002",
-    },
-    {
-      chain: "ethereum",
-      label: "Ethereum",
-      placeholder: "https://eth-mainnet.g.alchemy.com/v2/...",
-    },
-    {
-      chain: "arbitrum",
-      label: "Arbitrum",
-      placeholder: "https://arb-mainnet.g.alchemy.com/v2/...",
-    },
-    {
-      chain: "optimism",
-      label: "Optimism",
-      placeholder: "https://opt-mainnet.g.alchemy.com/v2/...",
-    },
-    {
-      chain: "base",
-      label: "Base",
-      placeholder: "https://base-mainnet.g.alchemy.com/v2/...",
-    },
-    {
-      chain: "polygon",
-      label: "Polygon",
-      placeholder: "https://polygon-mainnet.g.alchemy.com/v2/...",
-    },
+  const walletConnections: { chain: RpcChain; label: string }[] = [
+    { chain: "ethereum", label: "Ethereum" },
+    { chain: "arbitrum", label: "Arbitrum" },
+    { chain: "optimism", label: "Optimism" },
+    { chain: "base", label: "Base" },
+    { chain: "polygon", label: "Polygon" },
   ];
 
   return (
@@ -249,7 +177,7 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-muted-foreground">
-          Manage your preferences and configuration
+          Choose how Coinbox looks and how your wallets connect.
         </p>
       </motion.header>
 
@@ -342,281 +270,135 @@ export default function SettingsPage() {
         </div>
       </motion.section>
 
-      {/* AI Configuration */}
-      <motion.section variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Key className="h-4 w-4 text-primary" />
-          </div>
-          <h2 className="text-lg font-heading font-semibold">
-            AI Configuration
-          </h2>
-        </div>
-
-        <div className="card-premium p-6 space-y-5">
-          <div>
-            <label className="text-sm font-medium">Anthropic API Key</label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Enable AI-powered transaction categorization
+      <motion.section variants={itemVariants}>
+        <details className="space-y-4">
+          <summary className="cursor-pointer text-lg font-heading font-semibold">Advanced wallet connections</summary>
+          <div className="card-premium p-6 space-y-5">
+            <p className="text-sm text-muted-foreground">
+              Enter the connection address from your wallet data provider. To use the default connection, clear the address and save.
             </p>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <input
-                  type="password"
-                  placeholder="sk-ant-api03-..."
-                  value={apiKeyInput}
-                  onChange={(e) => {
-                    setApiKeyInput(e.target.value);
-                    setApiKeyStatus("idle");
-                  }}
-                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
-                />
-                {apiKeyStatus === "valid" && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />
-                )}
-                {apiKeyStatus === "invalid" && (
-                  <XCircle className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-destructive" />
-                )}
-              </div>
-              <Button
-                variant="outline"
-                onClick={verifyApiKey}
-                disabled={apiKeyStatus === "testing"}
-              >
-                {apiKeyStatus === "testing" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Verify"
-                )}
-              </Button>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Your API key is stored locally and encrypted. Never sent to our
-              servers.
-            </p>
-          </div>
-        </div>
-      </motion.section>
 
-      {/* RPC Endpoints */}
-      <motion.section variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Globe className="h-4 w-4 text-primary" />
-          </div>
-          <h2 className="text-lg font-heading font-semibold">RPC Endpoints</h2>
-        </div>
-
-        <div className="card-premium p-6 space-y-5">
-          <p className="text-sm text-muted-foreground">
-            Configure custom RPC endpoints for faster or private connections.
-            Leave empty to use defaults.
-          </p>
-
-          <div className="space-y-4">
-            {rpcEndpointConfig.map(({ chain, label, placeholder }) => {
-              const field = rpcFields[chain];
-              return (
-                <div key={chain}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium">{label}</label>
-                    {field.status === "success" && (
-                      <span className="text-xs text-success flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Connected
-                      </span>
-                    )}
+            <div className="space-y-4">
+              {walletConnections.map(({ chain, label }) => {
+                const field = rpcFields[chain];
+                return (
+                  <div key={chain}>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor={`wallet-connection-${chain}`} className="text-sm font-medium">{label}</label>
+                      {field.status === "success" && (
+                        <span className="text-xs text-success flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Connected
+                        </span>
+                      )}
+                      {field.status === "error" && (
+                        <span className="text-xs text-destructive flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Failed
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        id={`wallet-connection-${chain}`}
+                        type="password"
+                        autoComplete="off"
+                        placeholder="Connection address"
+                        value={field.value}
+                        onChange={(e) => updateRpcField(chain, e.target.value)}
+                        className={cn(
+                          "flex-1 rounded-lg border bg-background px-4 py-2.5 text-sm outline-none transition-all font-mono",
+                          field.status === "error"
+                            ? "border-destructive focus:border-destructive focus:ring-destructive/20"
+                            : "border-border focus:border-primary focus:ring-1 focus:ring-primary/20"
+                        )}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => testAndSaveRpc(chain)}
+                        disabled={field.status === "testing"}
+                        className="shrink-0"
+                      >
+                        {field.status === "testing" ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Test & Save"
+                        )}
+                      </Button>
+                    </div>
                     {field.status === "error" && (
-                      <span className="text-xs text-destructive flex items-center gap-1">
-                        <XCircle className="h-3 w-3" /> Failed
-                      </span>
+                      <p className="mt-1.5 text-xs text-destructive">
+                        Couldn’t connect. Check the address and try again.
+                      </p>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder={placeholder}
-                      value={field.value}
-                      onChange={(e) => updateRpcField(chain, e.target.value)}
-                      className={cn(
-                        "flex-1 rounded-lg border bg-background px-4 py-2.5 text-sm outline-none transition-all font-mono",
-                        field.status === "error"
-                          ? "border-destructive focus:border-destructive focus:ring-destructive/20"
-                          : "border-border focus:border-primary focus:ring-1 focus:ring-primary/20"
-                      )}
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => testAndSaveRpc(chain)}
-                      disabled={field.status === "testing"}
-                      className="shrink-0"
-                    >
-                      {field.status === "testing" ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Test & Save"
-                      )}
-                    </Button>
-                  </div>
-                  {field.status === "error" && field.error && (
-                    <p className="mt-1.5 text-xs text-destructive">
-                      {field.error}
-                    </p>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Wallet history provider */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Key className="h-4 w-4 text-primary" />
+            </div>
+            <h2 className="text-lg font-heading font-semibold">
+              Transaction history
+            </h2>
+          </div>
+
+          <div className="card-premium p-6 space-y-5">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="etherscan-key" className="text-sm font-medium">Etherscan key</label>
+                <a
+                  href="https://etherscan.io/apis"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  Get free API key
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Add an Etherscan key to load transaction history for your Ethereum wallets.
+              </p>
+              <div className="flex gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="password"
+                    id="etherscan-key"
+                    autoComplete="off"
+                    placeholder="Enter your Etherscan key"
+                    value={etherscanKeyInput}
+                    onChange={(e) => {
+                      setEtherscanKeyInput(e.target.value);
+                      setEtherscanKeyStatus("idle");
+                    }}
+                    className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
+                  />
+                  {etherscanKeyStatus === "saved" && (
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />
                   )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Block Explorer APIs */}
-      <motion.section variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Key className="h-4 w-4 text-primary" />
-          </div>
-          <h2 className="text-lg font-heading font-semibold">
-            Block Explorer APIs
-          </h2>
-        </div>
-
-        <div className="card-premium p-6 space-y-5">
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium">Etherscan API Key</label>
-              <a
-                href="https://etherscan.io/apis"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline flex items-center gap-1"
-              >
-                Get free API key
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Required for fetching transaction history on Ethereum and L2s
-            </p>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <input
-                  type="password"
-                  placeholder="Enter your Etherscan API key"
-                  value={etherscanKeyInput}
-                  onChange={(e) => {
-                    setEtherscanKeyInput(e.target.value);
-                    setEtherscanKeyStatus("idle");
-                  }}
-                  className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-mono"
-                />
-                {etherscanKeyStatus === "saved" && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-success" />
-                )}
+                <Button
+                  variant="outline"
+                  onClick={saveEtherscanKey}
+                  disabled={etherscanKeyStatus === "saved"}
+                >
+                  {etherscanKeyStatus === "saved" ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                onClick={saveEtherscanKey}
-                disabled={etherscanKeyStatus === "saved"}
-              >
-                {etherscanKeyStatus === "saved" ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              One API key works for Ethereum, Arbitrum, Optimism, Base, and Polygon via Etherscan V2 API.
-            </p>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Data Management */}
-      <motion.section variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Database className="h-4 w-4 text-primary" />
-          </div>
-          <h2 className="text-lg font-heading font-semibold">
-            Data Management
-          </h2>
-        </div>
-
-        <div className="card-premium divide-y divide-border">
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="font-medium">Export Data</p>
-              <p className="text-sm text-muted-foreground">
-                Download all data as JSON
+              <p className="mt-3 text-xs text-muted-foreground">
+                The same key works for Ethereum, Arbitrum, Optimism, Base, and Polygon.
               </p>
             </div>
-            <Button variant="outline" size="sm">
-              Export
-            </Button>
           </div>
-
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="font-medium">Import Data</p>
-              <p className="text-sm text-muted-foreground">
-                Restore from backup
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              Import
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="font-medium text-destructive">Clear All Data</p>
-              <p className="text-sm text-muted-foreground">
-                Permanently delete everything
-              </p>
-            </div>
-            <Button variant="destructive" size="sm">
-              Clear
-            </Button>
-          </div>
-        </div>
-      </motion.section>
-
-      {/* Security */}
-      <motion.section variants={itemVariants} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-            <Shield className="h-4 w-4 text-success" />
-          </div>
-          <h2 className="text-lg font-heading font-semibold">Security</h2>
-        </div>
-
-        <div className="card-premium divide-y divide-border">
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="font-medium">Database Encryption</p>
-              <p className="text-sm text-muted-foreground">
-                Encrypted with SQLCipher
-              </p>
-            </div>
-            <span className="text-xs px-3 py-1.5 rounded-full bg-success/10 text-success font-medium">
-              Enabled
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="font-medium">Encryption Password</p>
-              <p className="text-sm text-muted-foreground">
-                Update your database password
-              </p>
-            </div>
-            <Button variant="outline" size="sm">
-              Change
-            </Button>
-          </div>
-        </div>
+        </details>
       </motion.section>
 
       {/* About */}
@@ -626,24 +408,24 @@ export default function SettingsPage() {
             <Logo size="lg" />
             <p className="mt-4 text-sm text-muted-foreground">Version 2.0.0</p>
             <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-              Open source multi-chain portfolio intelligence platform
+              Review statements and manage your crypto wallets.
             </p>
             <div className="mt-6 flex gap-4">
               <Button
+                asChild
                 variant="ghost"
                 size="sm"
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
-                GitHub
+                <a href="https://github.com/itsyogesh/Coinbox" target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /> GitHub</a>
               </Button>
               <Button
+                asChild
                 variant="ghost"
                 size="sm"
                 className="gap-2 text-muted-foreground hover:text-foreground"
               >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Docs
+                <Link to="/help">Coinbox Help</Link>
               </Button>
             </div>
           </div>

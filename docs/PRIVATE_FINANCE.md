@@ -1,6 +1,6 @@
-# Private finance desktop
+# Try Coinbox on your desktop
 
-The first milestone imports UTF-8 INR bank and credit card CSVs into the Personal or Droidsize book. It runs in the Tauri desktop app. The finance vault uses SQLCipher and a separate passphrase. Statement bytes, parsed rows, and ledger entries live in the same encrypted file. Wallets and signing continue to use their existing storage.
+Run Coinbox from source and import two sample statements. You’ll check a credit card repayment, find its original statement rows, and restore a backup in a separate workspace.
 
 ## Run locally
 
@@ -24,15 +24,17 @@ On Windows, launch `apps/desktop/src-tauri/target/release/coinbox.exe` and set `
 
 ## Try the statement workflow
 
-1. Open Coinbox and create a finance vault with a passphrase of at least 14 characters. Select **Personal** and open **Import Inbox**.
-2. Choose **Use sample bank CSV**, click **Add account** to create Sample checking, and click **Stage for review**. Repeat with **Use sample card CSV** and Sample credit card. Review both statements before confirming.
-3. In **Review card repayments**, compare the bank withdrawal and card credit and click **Match as transfer**. Review the other rows and click **Confirm and save**.
+Use **Help** in Coinbox to open the import guide without leaving the app.
+
+1. Choose **Set up Coinbox** and enter a passphrase of at least 14 characters. Select **Personal** and open **Import Inbox**.
+2. Choose **Try sample bank statement**, click **Add account** to create Sample checking, and click **Review statement**. Repeat with **Try sample card statement** and Sample credit card. Review both statements before confirming.
+3. In **Review card repayments**, compare the bank withdrawal and card credit and click **Match as transfer**. Review the other rows and click **Save decisions**.
 4. On **Overview**, Personal shows ₹1,000.00 net spending, ₹5,000.00 income, and three ledger entries. Account activity shows ₹4,000.00 net movement in checking and ₹0.00 on the card. These figures describe posted activity and exclude opening balances.
 5. Open **Ledger**. Click each source link on the repayment to see the original CSV row. **Export CSV** saves the current book's posted entries to Downloads. Original source CSVs and encrypted backups also save to Downloads and preserve any earlier files. The repayment has two source references and contributes zero spending.
-6. Stage each sample again using its existing account. Coinbox reports that the exact file is already in the book. Check that the ledger still shows three entries. Switch to **Droidsize** to see its independent ledger and export.
+6. Import each sample again using its existing account. Coinbox reports that the exact file is already in the book. Check that the ledger still shows three entries. Switch to **Droidsize** to see its independent ledger and export.
 7. Click **Encrypted backup**. Open a second Coinbox launch with a fresh `COINBOX_FINANCE_DIR`, choose **Restore a backup**, and enter the original passphrase. Check that Personal shows the same totals and both repayment sources. The backup includes both books, original statements, and drafts. The in-app backup and restore limit is 32 MiB.
 
-For your own format, map the date, description, and either a signed amount or separate debit and credit columns. Map a running balance when available to flag mismatches. The first milestone accepts CSVs up to 1 MiB each. Review possible overlaps and repayments before posting. An unresolved row can stay pending while you stage another statement. Exported ledgers and downloaded source CSVs contain plaintext financial data.
+For your own format, map the date, description, and either a signed amount or separate debit and credit columns. Map a running balance when available to flag mismatches. The importer accepts UTF-8 CSV, single-sheet Excel (.xls and .xlsx), and supported unlocked PDFs up to 1 MiB. For PDFs, install Poppler and Tesseract as described in the [operator guide](COINBOX_SELF_HOST.md#desktop). Review possible overlaps and repayments before posting. An unresolved row can stay pending while you stage another statement. Exported ledgers and downloaded source CSVs contain plaintext financial data.
 
 ## Checks
 
@@ -40,7 +42,7 @@ For your own format, map the date, description, and either a signed amount or se
 pnpm typecheck
 pnpm build
 cargo test --locked --manifest-path packages/finance/Cargo.toml
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
 The finance tests use synthetic data to exercise duplicate uploads, confirmation retries, book isolation, exact money calculations, source links, CSV export, wrong passphrases, and encrypted backup and restore. Once dependencies are installed, the finance flow uses local Tauri commands and can be exercised with internet access disabled. The wallet routes use their existing network providers when opened.

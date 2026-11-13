@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bring INR bank and credit card statements together. Review transactions, match card repayments, and see where your money went.">
+  <meta name="theme-color" content="#f7f6ef">
+  <title>Coinbox — A clearer view of your money</title>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a href="./"><img src="assets/wordmark.svg" alt="Coinbox" width="136" height="32"></a>
+    <nav aria-label="Main"><a href="#sample">See an example</a><a href="help.html">Help</a></nav>
+    <a class="button quiet desktop-link" href="https://github.com/itsyogesh/Coinbox">View source <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="wrap">
+    <section class="hero" aria-labelledby="hero-heading">
+      <div class="hero-copy">
+        <p class="eyebrow">Personal finance for INR statements</p>
+        <h1 id="hero-heading">See where your money went.</h1>
+        <p class="intro">Bring your bank and credit card statements together. Check what Coinbox reads, match card repayments, and keep a record you can trace back to the original statement.</p>
+        <div class="actions"><a class="button primary" href="#sample">Explore the sample <span aria-hidden="true">↓</span></a><a class="text-link" href="help.html">Read the getting started guide</a></div>
+      </div>
+      <figure class="example-card">
+        <div class="example-header"><div class="app-mark"><img src="assets/mark.svg" width="24" height="24" alt=""></div><strong>Personal</strong><span>Sample data</span></div>
+        <div class="summary"><div><span>Net spending</span><strong>₹1,000</strong></div><div><span>Income</span><strong>₹5,000</strong></div></div>
+        <div class="example-body">
+          <h2>Recent transactions</h2>
+          <ul class="entries">
+            <li><span class="entry-icon" aria-hidden="true">⇄</span><div><strong>Credit card repayment</strong><small>Sample checking → Sample credit card</small></div><span>₹1,000</span></li>
+            <li><span class="entry-icon" aria-hidden="true">↗</span><div><strong>Sample bookshop</strong><small>Sample credit card</small></div><span>−₹1,000</span></li>
+            <li><span class="entry-icon" aria-hidden="true">↙</span><div><strong>Sample salary</strong><small>Sample checking</small></div><span>+₹5,000</span></li>
+          </ul>
+        </div>
+        <figcaption>The repayment appears once, as a transfer.</figcaption>
+      </figure>
+    </section>
+    <section id="sample" class="walkthrough" aria-labelledby="sample-heading">
+      <div class="section-copy">
+        <p class="eyebrow">A worked example</p>
+        <h2 id="sample-heading">One purchase. One repayment.</h2>
+        <p>You spend ₹1,000 at a bookshop and pay your card from your bank account. The purchase counts toward spending. The repayment moves money between your accounts.</p>
+        <a class="text-link" href="help.html#first-import">Try this in Coinbox <span aria-hidden="true">→</span></a>
+      </div>
+      <div class="sample-steps">
+        <details>
+          <summary>1. Check the two statements</summary>
+          <div><p>The bank shows a ₹1,000 withdrawal on 6 September. The card shows a ₹1,000 payment received on 7 September, alongside the bookshop purchase.</p>
+          <div class="actions"><a class="text-link" href="assets/synthetic-bank-inr.csv" download>Download sample bank CSV</a><a class="text-link" href="assets/synthetic-card-inr.csv" download>Download sample card CSV</a></div></div>
+        </details>
+        <details>
+          <summary>2. Match the repayment</summary>
+          <div><p>In Import Inbox, compare the withdrawal with the payment received. Choose <strong>Match as transfer</strong> and save your decisions once you’ve checked the other rows.</p></div>
+        </details>
+        <details>
+          <summary>3. Check your spending</summary>
+          <div><p>Overview shows ₹1,000 in net spending and ₹5,000 in income for these statements. The Ledger shows the transfer, and you can open its two statement references.</p></div>
+        </details>
+      </div>
+    </section>
+    <section class="help-callout" aria-labelledby="next-heading">
+      <div><h2 id="next-heading">Ready to try Coinbox?</h2><p>Start with the samples, then check which statements you can import.</p></div>
+      <a class="button primary" href="help.html">Open the guide <span aria-hidden="true">→</span></a>
+    </section>
+  </main>
+  <footer class="site-footer wrap">
+    <a href="./"><img src="assets/wordmark.svg" alt="Coinbox" width="108" height="28"></a>
+    <nav aria-label="Footer"><a href="help.html">Help</a><a href="https://github.com/itsyogesh/Coinbox">GitHub</a><a href="https://github.com/itsyogesh/Coinbox/issues">Report an issue</a></nav>
+  </footer>
+</body>
+</html>

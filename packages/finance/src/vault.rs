@@ -140,7 +140,7 @@ fn keyed_connection(path: &Path, passphrase: &str) -> Result<Connection> {
             .is_err()
     {
         return Err(invalid(
-            "SQLCipher is unavailable. Finance data remains locked.",
+            "Coinbox couldn’t open your workspace. Your statements and transactions are still locked.",
         ));
     }
     conn.busy_timeout(Duration::from_secs(5))?;
@@ -148,12 +148,12 @@ fn keyed_connection(path: &Path, passphrase: &str) -> Result<Connection> {
     conn.query_row("SELECT count(*) FROM sqlite_master", [], |row| {
         row.get::<_, i64>(0)
     })
-    .map_err(|_| invalid("The passphrase is incorrect or the vault cannot be read."))?;
+    .map_err(|_| invalid("Check your passphrase and try again. If it’s correct, Coinbox may be unable to read this workspace."))?;
     conn.pragma_update(None, "temp_store", "MEMORY")?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
     let journal: String = conn.query_row("PRAGMA journal_mode = DELETE", [], |row| row.get(0))?;
     if !journal.eq_ignore_ascii_case("delete") {
-        return Err(invalid("The finance vault requires DELETE journaling."));
+        return Err(invalid("Coinbox couldn’t open this workspace for editing."));
     }
     conn.pragma_update(None, "synchronous", "FULL")?;
     Ok(conn)
@@ -164,7 +164,7 @@ fn verify(conn: &Connection) -> Result<()> {
     let version: i64 = conn.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if id != APPLICATION_ID || version != VERSION {
         return Err(invalid(
-            "This file is not a supported Coinbox finance vault.",
+            "Choose a backup made with this version of Coinbox.",
         ));
     }
     Ok(())

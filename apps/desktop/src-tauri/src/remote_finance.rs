@@ -43,7 +43,7 @@ pub async fn finance_remote_request(
     body: Value,
 ) -> Result<Value, String> {
     let token = Zeroizing::new(token);
-    let base = server().ok_or("Set COINBOX_REMOTE_SERVER to the private server’s HTTPS origin.")?;
+    let base = server().ok_or("Couldn’t open your workspace. Check your setup and try again.")?;
     let parts = path.split('/').collect::<Vec<_>>();
     let download = match parts.as_slice() {
         ["books"] | ["admin", "grants"] => false,
@@ -56,19 +56,19 @@ pub async fn finance_remote_request(
         },
         _ => return Err("Unknown Coinbox operation.".into()),
     };
-    let url = base.join(&path).map_err(|_| "Invalid server endpoint.")?;
+    let url = base.join(&path).map_err(|_| "Couldn’t open your workspace. Check your setup and try again.")?;
     let mut response = Client::builder()
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(90))
         .build()
-        .map_err(|_| "Could not create the private server connection.")?
+        .map_err(|_| "Couldn’t connect to your workspace. Try again.")?
         .post(url)
         .bearer_auth(token.as_str())
         .json(&body)
         .send()
         .await
-        .map_err(|_| "Could not reach the private Coinbox server.")?;
+        .map_err(|_| "Couldn’t reach your workspace. Check your connection and try again.")?;
     let status = response.status();
     if status == reqwest::StatusCode::UNAUTHORIZED {
         return Err("COINBOX_REMOTE_UNAUTHORIZED".into());
@@ -91,10 +91,10 @@ pub async fn finance_remote_request(
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|_| "Could not read the server response.")?
+        .map_err(|_| "Coinbox couldn’t complete this action. Try again.")?
     {
         if bytes.len().saturating_add(chunk.len()) > coinbox_finance::MAX_BACKUP_BYTES {
-            return Err("The server response exceeds 32 MiB.".into());
+            return Err("This download is too large for Coinbox.".into());
         }
         bytes.extend_from_slice(&chunk);
     }
@@ -104,17 +104,17 @@ pub async fn finance_remote_request(
             .as_ref()
             .and_then(|value| value["error"].as_str())
             .map(str::to_owned)
-            .unwrap_or_else(|| format!("Coinbox server returned HTTP {}.", status.as_u16())));
+            .unwrap_or_else(|| "Coinbox couldn’t complete this action. Try again.".into()));
     }
     if download {
-        let filename = filename.ok_or("The server returned an invalid download filename.")?;
+        let filename = filename.ok_or("Couldn’t download the file. Try again.")?;
         let (stem, extension) = filename
             .rsplit_once('.')
-            .ok_or("The download has no file extension.")?;
+            .ok_or("Couldn’t download the file. Try again.")?;
         if !matches!(extension, "csv" | "xls" | "xlsx" | "pdf" | "sqlite3") {
-            return Err("The server returned an unsupported file type.".into());
+            return Err("Couldn’t download the file. Try again.".into());
         }
         return Ok(json!(save_download(&app, stem, extension, &bytes)?));
     }
-    serde_json::from_slice(&bytes).map_err(|_| "The server returned an invalid response.".into())
+    serde_json::from_slice(&bytes).map_err(|_| "Coinbox couldn’t complete this action. Try again.".into())
 }

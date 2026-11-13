@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ArrowDownLeft, ArrowRight, ArrowUpRight, CalendarDays, Download, FileText, Inbox, LockKeyhole, Moon, Send, ShieldCheck, Sparkles, Sun, X } from "lucide-react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { errorMessage, finance, inr, remoteFinance, serverSessionEnded, type Bill, type Book, type LedgerEntry, type Report, type Review, type SourceRow, type VaultStatus } from "./api";
+import { errorMessage, FinanceMessage, finance, inr, remoteFinance, serverSessionEnded, type Bill, type Book, type LedgerEntry, type Report, type Review, type SourceRow, type VaultStatus } from "./api";
 import { AskCoinbox, Bills, FinanceReports, upcomingBills } from "./FinanceTools";
 import { ImportForm } from "./ImportForm";
 import { ImportReview, SourceLink } from "./ImportReview";
@@ -11,13 +11,13 @@ import "./finance.css";
 
 const pages = {
   "/": { title: "Overview", subtitle: "Spending, income and account activity in this book." },
-  "/imports": { title: "Import Inbox", subtitle: "Stage statements, resolve overlaps and confirm what goes into your ledger." },
+  "/imports": { title: "Import Inbox", subtitle: "Review statements and choose what to save to your ledger." },
   "/ledger": { title: "Ledger", subtitle: "Posted transactions and the statement rows behind them." },
   "/bills": { title: "Bills", subtitle: "Track recurring charges and when they’re due." },
   "/accounts": { title: "Accounts", subtitle: "Track net movement and statement coverage for each account." },
-  "/reports": { title: "Reports & tax", subtitle: "Review statement coverage and prepare fiscal-year exports." },
-  "/server-access": { title: "Server access", subtitle: "Manage book access for your devices and assistants." },
-  "/ask": { title: "Ask Coinbox", subtitle: "Ask about posted spending, upcoming bills, and pending imports." },
+  "/reports": { title: "Reports", subtitle: "Check which statements you have and export a financial year." },
+  "/server-access": { title: "Manage access", subtitle: "Manage book access for your devices and assistants." },
+  "/ask": { title: "Ask Coinbox", subtitle: "Ask about spending, upcoming bills, and statements to review." },
 };
 
 export function FinanceWorkspace() {
@@ -52,7 +52,7 @@ export function FinanceWorkspace() {
   return <>
     {error && <div className="coinbox-wrap"><p className="coinbox-alert" role="alert">{error}</p>
       <button className="coinbox-button secondary" onClick={() => void load()}>Retry</button></div>}
-    {!status && !error && <p className="coinbox-wrap" role="status">Checking finance vault…</p>}
+    {!status && !error && <p className="coinbox-wrap" role="status">Opening Coinbox…</p>}
     {status && !status.unlocked && <VaultGate status={status} refresh={load} />}
     {status?.unlocked && book && <BookWorkspace key={book.id} book={book} books={books} switchBook={setBookId} onLock={load} />}
   </>;
@@ -77,7 +77,7 @@ function VaultGate({ status, refresh }: { status: VaultStatus; refresh: () => Pr
     setError("");
     try {
       if (restoring) {
-        if (!(backup instanceof File) || !backup.size || backup.size > 32 * 1024 * 1024) throw new Error("Choose an encrypted backup of up to 32 MiB.");
+        if (!(backup instanceof File) || !backup.size || backup.size > 32 * 1024 * 1024) throw new FinanceMessage("Choose an encrypted backup of up to 32 MiB.");
         await finance.restore(passphrase, Array.from(new Uint8Array(await backup.arrayBuffer())));
       } else {
         await finance.unlock(passphrase, !status.exists);
@@ -93,18 +93,18 @@ function VaultGate({ status, refresh }: { status: VaultStatus; refresh: () => Pr
   return <div className="coinbox-wrap coinbox-lock-screen">
     <section className="coinbox-card coinbox-vault-gate">
       <div className="coinbox-tile"><LockKeyhole size={21} aria-hidden="true" /></div>
-      <h1>{remoteFinance ? "Connect to Coinbox" : status.exists ? "Unlock finance vault" : restoring ? "Restore finance vault" : "Create your finance vault"}</h1>
-      <p className="coinbox-muted">{remoteFinance ? "Enter a device access token for your private server." : status.exists ? "Enter your finance passphrase to open your books." : restoring ? "Choose a Coinbox backup and enter the passphrase used to create it." : "Coinbox encrypts statements and transactions on this device. Use a separate passphrase for finance and keep it with your backups."}</p>
+      <h1>{remoteFinance ? "Open your workspace" : status.exists ? "Unlock Coinbox" : restoring ? "Restore a backup" : "Set up Coinbox"}</h1>
+      <p className="coinbox-muted">{remoteFinance ? "Enter the access code from the person who set up this workspace." : status.exists ? "Enter your passphrase to open Coinbox." : restoring ? "Choose a Coinbox backup and enter the passphrase used to create it." : "Choose a passphrase of at least 14 characters. You’ll need it to open Coinbox and restore backups."}</p>
       <form onSubmit={(event) => void submit(event)} key={String(restoring)}>
         {restoring && <label>Encrypted backup<input name="backup" type="file" accept=".sqlite3" required /></label>}
-        <label>{remoteFinance ? "Device access token" : "Finance passphrase"}<input name="passphrase" type="password" autoComplete={status.exists || restoring ? "current-password" : "new-password"}
+        <label>{remoteFinance ? "Access code" : "Finance passphrase"}<input name="passphrase" type="password" autoComplete={status.exists || restoring ? "current-password" : "new-password"}
           required minLength={!status.exists && !restoring ? 14 : undefined} maxLength={512} disabled={busy} /></label>
         {!status.exists && !restoring && <label>Confirm passphrase<input name="confirm" type="password" autoComplete="new-password" required minLength={14} maxLength={512} disabled={busy} /></label>}
         {error && <p className="coinbox-alert" role="alert">{error}</p>}
         <div className="coinbox-actions">
-          <button type="submit" className="coinbox-button primary" disabled={busy}>{busy ? "Connecting…" : remoteFinance ? "Connect" : status.exists ? "Unlock vault" : restoring ? "Restore backup" : "Create vault"}</button>
+          <button type="submit" className="coinbox-button primary" disabled={busy}>{busy ? "Please wait…" : remoteFinance ? "Open workspace" : status.exists ? "Unlock" : restoring ? "Restore backup" : "Set up Coinbox"}</button>
           {!status.exists && <button type="button" className="coinbox-button secondary" disabled={busy} onClick={() => { setRestoring(!restoring); setError(""); }}>
-            {restoring ? "Create a new vault" : "Restore a backup"}</button>}
+            {restoring ? "Start with a new workspace" : "Restore a backup"}</button>}
         </div>
       </form>
     </section>
@@ -149,8 +149,8 @@ function BookWorkspace({ book, books, switchBook, onLock }: {
 
   function backup() {
     void run(async () => {
-      const path = await finance.backup();
-      return `Encrypted backup saved to ${path}.`;
+      await finance.backup();
+      return remoteFinance ? "Encrypted backup downloaded." : "Encrypted backup saved to Downloads.";
     }, false);
   }
 
@@ -165,9 +165,9 @@ function BookWorkspace({ book, books, switchBook, onLock }: {
           aria-label={dark ? "Use light theme" : "Use dark theme"} onClick={() => setTheme(dark ? "light" : "dark")}>
           {dark ? <Sun size={17} /> : <Moon size={17} />}
         </button>
-        {remoteFinance && books.length > 1 && <Link to="/server-access" className="coinbox-button secondary">Server access</Link>}
+        {remoteFinance && books.length > 1 && <Link to="/server-access" className="coinbox-button secondary">Manage access</Link>}
         {(!remoteFinance || books.length > 1) && <button type="button" className="coinbox-button secondary" disabled={busy} onClick={backup}><Download size={16} /><span>Encrypted backup</span></button>}
-        <button type="button" className="coinbox-icon-button" aria-label={remoteFinance ? "Disconnect" : "Lock finance vault"} title={remoteFinance ? "Disconnect" : "Lock finance vault"} disabled={busy}
+        <button type="button" className="coinbox-icon-button" aria-label={remoteFinance ? "Sign out" : "Lock Coinbox"} title={remoteFinance ? "Sign out" : "Lock Coinbox"} disabled={busy}
           onClick={() => void run(async () => { await finance.lock(); await onLock(); return ""; }, false)}><LockKeyhole size={17} /></button>
       </div>
     </header>
@@ -176,8 +176,8 @@ function BookWorkspace({ book, books, switchBook, onLock }: {
         <div><h1>{page.title}</h1><p className="coinbox-muted">{page.subtitle}</p></div>
         {pathname === "/" && <Link to="/imports" className="coinbox-button primary"><Inbox size={16} /> Import statement</Link>}
         {pathname === "/ledger" && <button className="coinbox-button primary" type="button" disabled={busy || !report} onClick={() => void run(async () => {
-          const path = await finance.exportCsv(book.id);
-          return `${book.name} ledger saved to ${path}.`;
+          await finance.exportCsv(book.id);
+          return `${book.name} ledger downloaded.`;
         }, false)}><Download size={16} /> Export CSV</button>}
       </div>
       {error && <p className="coinbox-alert" role="alert">{error} <button className="coinbox-source-link" onClick={() => void run(async () => { await refresh(); return "Review refreshed."; }, false)}>Refresh data</button></p>}
@@ -227,10 +227,10 @@ function Overview({ report, review, bills }: { report: Report; review: Review; b
           <div className="coinbox-section-title spread"><h2>Recent transactions</h2><Link className="coinbox-source-link" to="/ledger">Open ledger</Link></div>
           {report.entries.length ? <ul className="coinbox-activity">{report.entries.slice(0, 5).map((entry) => <li key={entry.id}>
             <div><strong>{entry.description}</strong><small>{entry.date} · {entry.accounts.join(" → ")}</small></div><span className="coinbox-number">{inr(entry.amount)}</span>
-          </li>)}</ul> : <p className="coinbox-empty">Confirmed statement rows will appear here.</p>}
+          </li>)}</ul> : <p className="coinbox-empty">Transactions you save from statements will appear here.</p>}
         </section>
         <SpendingTrend entries={report.entries} />
-        <section className="coinbox-card"><h2>Account activity</h2><p className="coinbox-muted">Net movement from posted rows. Opening balances are excluded.</p>
+        <section className="coinbox-card"><h2>Account activity</h2><p className="coinbox-muted">Shows the net change from saved transactions since your first import.</p>
           {report.accounts.length ? <ul className="coinbox-activity">{report.accounts.map((account) => <li key={account.id}>
             <div><strong>{account.name}</strong><small>{account.kind === "card" ? "Credit card" : "Bank"}</small></div><span className="coinbox-number">{inr(account.movement)}</span>
           </li>)}</ul> : <p className="coinbox-empty">Add your first account when importing a statement.</p>}
@@ -238,13 +238,13 @@ function Overview({ report, review, bills }: { report: Report; review: Review; b
       </div>
       <div className="coinbox-stack">
         <section className="coinbox-card"><div className="coinbox-section-title"><Inbox size={18} /><h2>Import Inbox</h2></div>
-          <p className="coinbox-muted">{pending ? `${pending} rows waiting for review.` : "No statements waiting for review."}</p><Link className="coinbox-source-link" to="/imports">Open Import Inbox <ArrowRight size={15} /></Link>
+          <p className="coinbox-muted">{pending ? `${pending} transactions to review.` : "No statements waiting for review."}</p><Link className="coinbox-source-link" to="/imports">Open Import Inbox <ArrowRight size={15} /></Link>
         </section>
         <section className="coinbox-card"><div className="coinbox-section-title"><CalendarDays size={18} /><h2>Next bill</h2></div>
           <p className="coinbox-muted">{nextBill ? `${nextBill.name} · ${inr(nextBill.amount)} · ${nextBill.next}` : "No bills scheduled."}</p>
           <Link className="coinbox-source-link" to="/bills">All bills <ArrowRight size={15} /></Link>
         </section>
-        <p className="coinbox-local"><ShieldCheck size={17} /> {remoteFinance ? "Encrypted on your server" : "Encrypted on this device"}</p>
+        <p className="coinbox-local"><ShieldCheck size={17} /> {remoteFinance ? "Your saved statements are encrypted" : "Encrypted on this device"}</p>
       </div>
     </div>
   </>;
@@ -268,7 +268,7 @@ function SpendingTrend({ entries }: { entries: LedgerEntry[] }) {
         <span className="coinbox-trend-track" aria-hidden="true"><span style={{ width: `${Number(magnitude(amount) * 100n / max)}%` }} /></span>
         <strong className="coinbox-number">{inr(amount.toString())}</strong>
       </li>)}
-    </ul> : <p className="coinbox-empty">Posted purchases and refunds will appear here.</p>}
+    </ul> : <p className="coinbox-empty">Saved purchases and refunds will appear here.</p>}
   </section>;
 }
 
@@ -281,7 +281,7 @@ function Accounts({ report, review }: { report: Report; review: Review }) {
     const statements = review.sources.filter((source) => source.accountId === account.id);
     return <section key={account.id} className="coinbox-card coinbox-stack">
       <div className="coinbox-section-title spread"><h2>{account.name}</h2><span className="coinbox-pill">{account.kind === "card" ? "Credit card" : "Bank"}</span></div>
-      <p><strong className="coinbox-number">{inr(account.movement)}</strong> <span className="coinbox-muted">net posted movement</span></p>
+      <p><strong className="coinbox-number">{inr(account.movement)}</strong> <span className="coinbox-muted">net change from saved transactions</span></p>
       {statements.length ? <ul className="coinbox-activity">{statements.map((source) => <li key={source.id}>
         <div><strong>{source.name}</strong><small>{source.firstDate && source.lastDate ? `${source.firstDate} to ${source.lastDate}` : "No valid dates"} · {source.pending} rows to review</small></div>
       </li>)}</ul> : <p className="coinbox-muted">No statements imported.</p>}
@@ -297,7 +297,7 @@ function Ledger({ entries }: { entries: LedgerEntry[] }) {
   const accounts = Array.from(new Set(entries.flatMap((entry) => entry.accounts))).sort();
   const visible = entries.filter((entry) => (!account || entry.accounts.includes(account)) &&
     (!kind || entry.kind === kind) && `${entry.description} ${entry.date} ${entry.accounts.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
-  if (!entries.length) return <div className="coinbox-card coinbox-empty"><p>No posted transactions in this book.</p><Link className="coinbox-source-link" to="/imports">Import a statement</Link></div>;
+  if (!entries.length) return <div className="coinbox-card coinbox-empty"><p>No saved transactions in this book.</p><Link className="coinbox-source-link" to="/imports">Import a statement</Link></div>;
   return <div className="coinbox-card coinbox-ledger">
     <div className="coinbox-actions">
       <input type="search" aria-label="Search ledger" placeholder="Search ledger" value={query} onChange={(event) => setQuery(event.target.value)} />
@@ -321,7 +321,7 @@ function Ledger({ entries }: { entries: LedgerEntry[] }) {
 function SourceDetail({ book, rowId, close }: { book: string; rowId: number; close: () => void }) {
   const [row, setRow] = useState<SourceRow | null>(null);
   const [error, setError] = useState("");
-  const [savedPath, setSavedPath] = useState("");
+  const [downloaded, setDownloaded] = useState(false);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     let active = true;
@@ -334,14 +334,14 @@ function SourceDetail({ book, rowId, close }: { book: string; rowId: number; clo
       <button type="button" className="coinbox-icon-button" autoFocus onClick={close} aria-label="Close source row"><X size={18} /></button></div>
     {error && <p className="coinbox-alert" role="alert">{error}</p>}
     {!row && !error && <p role="status">Loading statement row…</p>}
-    {row && <><p className="coinbox-muted">{row.account} · {row.date ?? "Unknown date"} · {row.status}</p>
+    {row && <><p className="coinbox-muted">{row.account} · {row.date ?? "Unknown date"}</p>
       <pre>{row.raw}</pre><button type="button" className="coinbox-button secondary" disabled={saving} onClick={() => {
         setError("");
-        setSavedPath("");
+        setDownloaded(false);
         setSaving(true);
-        void finance.sourceFile(book, row.sourceId).then(setSavedPath)
+        void finance.sourceFile(book, row.sourceId).then(() => setDownloaded(true))
           .catch((err) => setError(errorMessage(err))).finally(() => setSaving(false));
       }}><Download size={16} /> Download original statement</button>
-      {savedPath && <p className="coinbox-status" role="status">Original statement saved to {savedPath}.</p>}</>}
+      {downloaded && <p className="coinbox-status" role="status">Original statement downloaded.</p>}</>}
   </section>;
 }

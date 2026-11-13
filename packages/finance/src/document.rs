@@ -79,7 +79,7 @@ pub(crate) fn normalize(name: &str, bytes: &[u8]) -> Result<Option<Vec<u8>>> {
 }
 
 fn read_text(bytes: &[u8]) -> Result<&str> {
-    std::str::from_utf8(bytes).map_err(|_| invalid("The extracted statement text is not UTF-8."))
+    std::str::from_utf8(bytes).map_err(|_| invalid("Could not read the text in this PDF. Try a CSV or Excel statement."))
 }
 
 fn run(command: &str, args: &[&str], input: &[u8], limit: usize) -> Result<Vec<u8>> {
@@ -91,7 +91,7 @@ fn run(command: &str, args: &[&str], input: &[u8], limit: usize) -> Result<Vec<u
         .spawn()
         .map_err(|error| {
             if error.kind() == std::io::ErrorKind::NotFound {
-                invalid(format!("Install {command} to import PDF statements."))
+                invalid("PDF import is unavailable here. Try a CSV or Excel statement.")
             } else {
                 error.into()
             }
@@ -115,7 +115,7 @@ fn run(command: &str, args: &[&str], input: &[u8], limit: usize) -> Result<Vec<u
                     let _ = child.kill();
                     let _ = child.wait();
                     return match result {
-                        Ok(_) => Err(invalid(format!("{command} timed out reading this PDF."))),
+                        Ok(_) => Err(invalid("Reading this PDF took too long. Try a shorter statement or export a CSV.")),
                         Err(error) => Err(error.into()),
                     };
                 }
@@ -128,11 +128,11 @@ fn run(command: &str, args: &[&str], input: &[u8], limit: usize) -> Result<Vec<u
             return Err(invalid("Extracted statement data exceeds the size limit."));
         }
         if !status.success() {
-            return Err(invalid(format!("{command} could not read this PDF.")));
+            return Err(invalid("Could not read this PDF. Try an unlocked PDF, CSV, or Excel statement."));
         }
         match writer
             .join()
-            .map_err(|_| invalid("Could not send the statement to the PDF parser."))?
+            .map_err(|_| invalid("Could not read this PDF. Try a CSV or Excel statement."))?
         {
             Err(error) if error.kind() != std::io::ErrorKind::BrokenPipe => Err(error.into()),
             _ => Ok(output),

@@ -53,7 +53,7 @@ export function ImportReview({ book, review, busy, run }: {
     <div className="coinbox-stack">
       {matches.length > 0 && <section className="coinbox-card coinbox-repayment">
         <div className="coinbox-section-title"><ArrowLeftRight size={19} /><h2>Review card repayments</h2></div>
-        <p className="coinbox-muted">Match a bank withdrawal with its card credit to record a single transfer.</p>
+        <p className="coinbox-muted">Match a bank withdrawal with the payment on your card. Coinbox records one transfer and keeps it out of spending.</p>
         {matches.flatMap((bank) => bank.transferMatches.map((match) => {
           const card = byId.get(match.rowId);
           if (!card) return null;
@@ -72,29 +72,29 @@ export function ImportReview({ book, review, busy, run }: {
         }))}
       </section>}
       <section className="coinbox-card">
-        <h2>Review parsed rows</h2>
-        <p className="coinbox-muted">{pending.length} awaiting review · {invalidRows} invalid</p>
-        {review.rows.length === 0 ? <p className="coinbox-empty">Stage a statement to see its parsed rows here.</p> : <div className="coinbox-scroll">
+        <h2>Review transactions</h2>
+        <p className="coinbox-muted">{pending.length} to review · {invalidRows} unreadable</p>
+        {review.rows.length === 0 ? <p className="coinbox-empty">Choose a statement to review its transactions here.</p> : <div className="coinbox-scroll">
           <table><thead><tr><th>Transaction</th><th>Amount / balance</th><th>Review</th><th>Decision</th></tr></thead>
             <tbody>{review.rows.map((row) => <tr key={row.rowId}>
-              <td><strong>{row.description || "Unparsed row"}</strong><small>{row.date ?? "Unknown date"} · {row.account}</small><SourceLink source={row} /></td>
+              <td><strong>{row.description || "Unreadable transaction"}</strong><small>{row.date ?? "Unknown date"} · {row.account}</small><SourceLink source={row} /></td>
               <td className="coinbox-number">{inr(row.amount)}{row.balance !== null && <small>Balance {inr(row.balance)}</small>}</td>
               <td>{row.error && <span className="coinbox-warning">{row.error}</span>}
                 {row.duplicate && <span className="coinbox-warning">Possible duplicate · <SourceLink source={row.duplicate} /></span>}
-                {row.balanceMismatch && <span className="coinbox-warning">Running balance mismatch</span>}
+                {row.balanceMismatch && <span className="coinbox-warning">Running balance doesn’t add up</span>}
                 {(row.transferHint || row.transferMatches.length > 0) && <span className="coinbox-warning">Possible card repayment</span>}
                 {!row.error && !hasWarning(row) && <span className="coinbox-pill">Ready</span>}
               </td>
-              <td>{row.status === "invalid" ? "Invalid" : paired.has(row.rowId) ? "Matched transfer" : <select
+              <td>{row.status === "invalid" ? "Couldn’t read" : paired.has(row.rowId) ? "Matched transfer" : <select
                 aria-label={`Decision for ${row.name} line ${row.line}`} value={decision(row)} disabled={busy}
                 onChange={(event) => { request.current = null; setDecisions({ ...decisions, [row.rowId]: event.target.value as Decision }); }}>
-                <option value="wait">Leave pending</option><option value="post">{hasWarning(row) ? "Import individually" : "Import"}</option><option value="skip">Exclude row</option>
+                <option value="wait">Review later</option><option value="post">{hasWarning(row) ? "Save anyway" : "Import"}</option><option value="skip">Skip</option>
               </select>}</td>
             </tr>)}</tbody>
           </table>
         </div>}
         {(entryCount > 0 || skip.length > 0) && <div className="coinbox-actions coinbox-confirm">
-          <button className="coinbox-button primary" type="button" disabled={busy} onClick={confirm}>Confirm and save</button>
+          <button className="coinbox-button primary" type="button" disabled={busy} onClick={confirm}>Save decisions</button>
           <span className="coinbox-muted">{entryCount} entries to save · {skip.length} rows to exclude</span>
         </div>}
       </section>
@@ -104,7 +104,7 @@ export function ImportReview({ book, review, busy, run }: {
           {review.sources.map((source) => <li key={source.id}>
             <FileText size={19} aria-hidden="true" />
             <div><strong>{source.name}</strong><small>{source.account} · {source.firstDate && source.lastDate ? `${source.firstDate} to ${source.lastDate}` : "No valid dates"}</small>
-              <small>{source.valid} parsed · {source.invalid} invalid · {source.pending} pending · {source.posted} posted · {source.skipped} excluded</small>
+              <small>{source.pending} to review · {source.posted} saved · {source.skipped} skipped · {source.invalid} unreadable</small>
               <small>{source.balances} balances mapped · {source.mismatches} mismatches</small></div>
             {source.posted === 0 && source.skipped === 0 && <button type="button" className="coinbox-button secondary" disabled={busy}
               onClick={() => {

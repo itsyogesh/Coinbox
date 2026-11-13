@@ -92,14 +92,14 @@ struct RawMessage {
 
 fn config() -> Result<InstalledClient, String> {
     let path = std::env::var_os("COINBOX_GMAIL_CLIENT_FILE")
-        .ok_or("Set COINBOX_GMAIL_CLIENT_FILE to your Google Desktop OAuth client JSON.")?;
+        .ok_or("Gmail connection is unavailable. Import the downloaded statement or email instead.")?;
     let bytes = Zeroizing::new(
-        std::fs::read(path).map_err(|_| "Could not read the Gmail OAuth client file.")?,
+        std::fs::read(path).map_err(|_| "Gmail connection is unavailable. Import the downloaded statement or email instead.")?,
     );
     let config: Config = serde_json::from_slice(&bytes)
-        .map_err(|_| "Use the downloaded Google Desktop OAuth client JSON.")?;
+        .map_err(|_| "Gmail connection is unavailable. Import the downloaded statement or email instead.")?;
     if config.installed.client_id.is_empty() || config.installed.client_secret.is_empty() {
-        return Err("The Gmail OAuth client file is missing required values.".into());
+        return Err("Gmail connection is unavailable. Import the downloaded statement or email instead.".into());
     }
     Ok(config.installed)
 }
@@ -148,10 +148,7 @@ async fn json_response<T: serde::de::DeserializeOwned>(
 ) -> Result<T, String> {
     let status = response.status();
     if !status.is_success() {
-        return Err(format!(
-            "Google returned HTTP {}. Check your Google account and reconnect if needed.",
-            status.as_u16()
-        ));
+        return Err("Google couldn’t complete this request. Check your Google account and reconnect if needed.".into());
     }
     let mut response = response;
     let mut bytes = Vec::new();
@@ -181,7 +178,7 @@ async fn access(http: &Client, account: &str) -> Result<Zeroizing<String>, Strin
         ])
         .send()
         .await
-        .map_err(|_| "Could not reach the Google token endpoint.")?;
+        .map_err(|_| "Could not reach Google. Check your connection and try again.")?;
     let token: Token = json_response(response, 64 * 1024).await?;
     Ok(Zeroizing::new(token.access_token))
 }
@@ -215,10 +212,10 @@ pub async fn gmail_connect(
     let cfg = config()?;
     let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
         .await
-        .map_err(|_| "Could not start the Gmail sign-in callback.")?;
+        .map_err(|_| "Could not start Gmail sign-in. Try again.")?;
     let port = listener
         .local_addr()
-        .map_err(|_| "Could not read the callback port.")?
+        .map_err(|_| "Could not start Gmail sign-in. Try again.")?
         .port();
     let redirect = format!("http://127.0.0.1:{port}/");
     let verifier = Zeroizing::new(random());
@@ -259,7 +256,7 @@ pub async fn gmail_connect(
         ])
         .send()
         .await
-        .map_err(|_| "Could not reach the Google token endpoint.")?;
+        .map_err(|_| "Could not reach Google. Check your connection and try again.")?;
     let token: Token = json_response(response, 64 * 1024).await?;
     if !token
         .scope
@@ -271,7 +268,7 @@ pub async fn gmail_connect(
     let refresh = Zeroizing::new(
         token
             .refresh_token
-            .ok_or("Google did not return a refresh token. Reconnect Gmail.")?,
+            .ok_or("Google didn’t finish connecting Gmail. Try connecting again.")?,
     );
     account(&state, &book)?;
     set_generic_password(KEYCHAIN, &keychain_account, refresh.as_bytes())
@@ -283,12 +280,12 @@ async fn callback(
     redirect: &str,
     expected_state: &str,
 ) -> Result<Zeroizing<String>, String> {
-    let base = Url::parse(redirect).map_err(|_| "Invalid callback URL.")?;
+    let base = Url::parse(redirect).map_err(|_| "Could not finish Gmail sign-in. Try again.")?;
     loop {
         let (mut stream, _) = listener
             .accept()
             .await
-            .map_err(|_| "Gmail sign-in callback failed.")?;
+            .map_err(|_| "Could not finish Gmail sign-in. Try again.")?;
         let request = timeout(Duration::from_secs(4), async {
             let mut bytes = Vec::new();
             while bytes.len() < 8192 {
@@ -419,7 +416,7 @@ pub async fn gmail_search(
             ])
             .send()
             .await
-            .map_err(|_| "Could not read Gmail message metadata.")?;
+            .map_err(|_| "Could not read this email. Try again.")?;
         let metadata: Metadata = json_response(response, 256 * 1024).await?;
         let headers = metadata
             .payload
@@ -469,7 +466,7 @@ pub async fn gmail_message(
     let raw: RawMessage = json_response(response, (MAX_EMAIL_BYTES * 4 / 3) + 4096).await?;
     let bytes = URL_SAFE_NO_PAD
         .decode(raw.raw.trim_end_matches('='))
-        .map_err(|_| "Could not decode the Gmail message.")?;
+        .map_err(|_| "Could not read this email. Try downloading the statement from Gmail.")?;
     if bytes.len() > MAX_EMAIL_BYTES {
         return Err("The selected Gmail message exceeds 20 MiB.".into());
     }

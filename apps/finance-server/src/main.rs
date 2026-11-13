@@ -157,7 +157,7 @@ fn token(headers: &HeaderMap) -> Result<&str, ApiError> {
         .ok_or_else(|| {
             ApiError(
                 StatusCode::UNAUTHORIZED,
-                "Enter a valid device access token.".into(),
+                "Enter a valid access code.".into(),
             )
         })
 }
@@ -169,21 +169,21 @@ fn is_admin(server: &Server, token: &str) -> bool {
 fn expired() -> ApiError {
     ApiError(
         StatusCode::UNAUTHORIZED,
-        "This access token is invalid or has been revoked.".into(),
+        "This access code is invalid or has been removed. Check it or ask for a new code.".into(),
     )
 }
 
 fn forbidden() -> ApiError {
     ApiError(
         StatusCode::FORBIDDEN,
-        "This token has no access to this book or operation.".into(),
+        "You don’t have access to do this in this book.".into(),
     )
 }
 
 fn internal() -> ApiError {
     ApiError(
         StatusCode::INTERNAL_SERVER_ERROR,
-        "Coinbox server could not complete the request.".into(),
+        "Coinbox couldn’t complete this action. Try again.".into(),
     )
 }
 
@@ -302,7 +302,7 @@ fn download(name: &str, content_type: &'static str, bytes: impl Into<Body>) -> R
 
 fn decode<T: serde::de::DeserializeOwned>(body: Value) -> Result<T, ApiError> {
     serde_json::from_value(body)
-        .map_err(|_| ApiError(StatusCode::BAD_REQUEST, "Invalid request data.".into()))
+        .map_err(|_| ApiError(StatusCode::BAD_REQUEST, "Check the information you entered and try again.".into()))
 }
 
 #[derive(Deserialize)]

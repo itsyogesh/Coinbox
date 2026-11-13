@@ -40,8 +40,8 @@ impl FinanceState {
         let mut vault = self
             .vault
             .lock()
-            .map_err(|_| "The finance vault is unavailable.")?;
-        operation(vault.as_mut().ok_or("Unlock the finance vault first.")?).map_err(message)
+            .map_err(|_| "Couldn’t open your workspace.")?;
+        operation(vault.as_mut().ok_or("Unlock Coinbox and try again.")?).map_err(message)
     }
 }
 
@@ -61,11 +61,11 @@ pub async fn finance_status(state: State<'_, FinanceState>) -> Result<VaultStatu
     let vault = state
         .vault
         .lock()
-        .map_err(|_| "The finance vault is unavailable.")?;
+        .map_err(|_| "Couldn’t open your workspace.")?;
     let exists = state
         .path
         .try_exists()
-        .map_err(|_| "The finance vault directory is unavailable.")?;
+        .map_err(|_| "Couldn’t open your workspace.")?;
     Ok(VaultStatus {
         exists,
         unlocked: vault.is_some(),
@@ -82,9 +82,9 @@ pub async fn finance_unlock(
     let mut active = state
         .vault
         .lock()
-        .map_err(|_| "The finance vault is unavailable.")?;
+        .map_err(|_| "Couldn’t open your workspace.")?;
     if active.is_some() {
-        return Err("Lock the current finance vault first.".into());
+        return Err("Lock Coinbox and try again.".into());
     }
     let vault = if create {
         Vault::create(&state.path, &passphrase)
@@ -100,7 +100,7 @@ pub async fn finance_lock(state: State<'_, FinanceState>) -> Result<(), String> 
     let mut active = state
         .vault
         .lock()
-        .map_err(|_| "The finance vault is unavailable.")?;
+        .map_err(|_| "Couldn’t open your workspace.")?;
     *active = None;
     Ok(())
 }
@@ -115,9 +115,9 @@ pub async fn finance_restore(
     let mut active = state
         .vault
         .lock()
-        .map_err(|_| "The finance vault is unavailable.")?;
+        .map_err(|_| "Couldn’t open your workspace.")?;
     if active.is_some() {
-        return Err("Restore into a clean finance profile.".into());
+        return Err("Restore your backup in a new Coinbox workspace.".into());
     }
     *active = Some(Vault::restore(&state.path, &passphrase, &bytes).map_err(message)?);
     Ok(())
@@ -303,7 +303,7 @@ pub(crate) fn save_download(
         .map_err(|_| "The Downloads folder is unavailable.")?;
     write_download(&dir, stem, extension, bytes)
         .map(|path| path.to_string_lossy().into_owned())
-        .map_err(|err| format!("Could not save to Downloads. {err}"))
+        .map_err(|_| "Could not save to Downloads. Check that the folder is writable and try again.".into())
 }
 
 fn write_download(dir: &Path, stem: &str, extension: &str, bytes: &[u8]) -> io::Result<PathBuf> {

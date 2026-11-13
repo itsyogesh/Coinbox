@@ -20,11 +20,11 @@ pub type Result<T> = std::result::Result<T, FinanceError>;
 pub enum FinanceError {
     #[error("{0}")]
     Input(String),
-    #[error("The finance vault could not be read or written.")]
+    #[error("Coinbox couldn’t read or save your changes.")]
     Database(#[from] rusqlite::Error),
-    #[error("The finance vault file could not be read or written.")]
+    #[error("Coinbox couldn’t read or save your changes.")]
     Io(#[from] std::io::Error),
-    #[error("The finance vault data could not be read.")]
+    #[error("Coinbox couldn’t read your workspace.")]
     Format(#[from] serde_json::Error),
 }
 

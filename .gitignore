@@ -2,3 +2,5 @@ node_modules
 
 apps/finance-server/target/
 deploy/secrets/
+
+apps/website/dist/
