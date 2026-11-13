@@ -23,6 +23,7 @@ Coinbox currently uses a generic PDF table extractor with local OCR and manual r
 | --- | --- |
 | [bank-statement-parser](https://github.com/akhilnarang/bank-statement-parser) | MIT Python parser for bank accounts. HDFC, ICICI, IDFC FIRST, IndusInd, Kotak, Slice, SBI monthly and YONO layouts, and Union Bank. |
 | [cc-parser](https://github.com/akhilnarang/cc-parser) | MIT Python parser for cards. HDFC, ICICI, SBI, Axis, IDFC, IndusInd, HSBC, Bank of Baroda, Yes Bank, and others. Supports password prompts for encrypted PDFs. |
+| [indian-bank-statement-parser](https://github.com/raptar231/indian-bank-statement-parser) | Apache-2.0 Python CLI and library. Lists both bank-account and card PDF adapters for HDFC, ICICI, SBI, and Axis. Exports CSV and JSON. |
 | [Club-Asymmetric Bank Statement Parser](https://github.com/Club-Asymmetric/Bank-Statement-Parser) | Additional bank-account layout references for SBI, ICICI, Canara, Tamilnad Mercantile Bank, and Karur Vysya Bank. Check license terms before reusing code. |
 
 AU Small Finance Bank PDF support remains unverified in the GitHub projects reviewed. [Tally's support list](https://help.tallysolutions.com/list-of-banks-supported-by-tallyprime-for-e-payments-auto-brs-and-cheque-formats/) identifies an AU Excel format, which is a candidate for Coinbox's existing Excel mapper. Validate AU savings or current account and AU credit card PDFs separately with sanitized samples that preserve columns, page breaks, signs, and balances.
