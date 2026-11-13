@@ -1,0 +1,204 @@
+@font-face {
+  font-family: "DM Sans";
+  src: url("../assets/finance/dm-sans.ttf") format("truetype");
+  font-weight: 100 1000;
+  font-display: swap;
+}
+@font-face {
+  font-family: Geist;
+  src: url("../assets/finance/geist.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+.coinbox-shell {
+  --cb-bg: #fafafa;
+  --cb-panel: #fff;
+  --cb-rail: #f7f7f7;
+  --cb-ink: #141716;
+  --cb-muted: #606663;
+  --cb-border: #e2e6e3;
+  --cb-soft: #f3f5f4;
+  --cb-emerald: #007548;
+  --cb-tint: #eaf7f0;
+  --cb-warning: #825119;
+  --cb-warning-bg: #fbf1dc;
+  --cb-error: #8f252d;
+  --cb-error-bg: #fef0f0;
+  --cb-action: #171a19;
+  --cb-action-text: #fff;
+  --cb-shadow: 0 1px 2px #101a1410;
+  --cb-sidebar-width: 234px;
+  background: var(--cb-bg);
+  color: var(--cb-ink);
+  display: grid;
+  grid-template-columns: var(--cb-sidebar-width) minmax(0, 1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 14px;
+}
+.dark .coinbox-shell {
+  --cb-bg: #161918;
+  --cb-panel: #1e2220;
+  --cb-rail: #191c1a;
+  --cb-ink: #f6f8f7;
+  --cb-muted: #adb8b2;
+  --cb-border: #353e39;
+  --cb-soft: #272e2a;
+  --cb-emerald: #8be2b8;
+  --cb-tint: #203a2d;
+  --cb-warning: #f0c992;
+  --cb-warning-bg: #3d3527;
+  --cb-error: #ffc2c2;
+  --cb-error-bg: #452427;
+  --cb-action: #e8f3ec;
+  --cb-action-text: #171a19;
+  --cb-shadow: 0 1px 2px #0004;
+  color-scheme: dark;
+}
+.coinbox-shell.is-collapsed { --cb-sidebar-width: 67px; }
+.coinbox-skip { position: fixed; z-index: 10; top: 0; left: 0; transform: translateY(-110%); padding: 10px; background: var(--cb-panel); }
+.coinbox-skip:focus { transform: translateY(0); }
+.coinbox-rail { position: sticky; top: 0; height: 100vh; height: 100dvh; overflow: auto; padding: 16px 12px; display: grid; align-content: start; gap: 20px; background: var(--cb-rail); border-right: 1px solid var(--cb-border); }
+.coinbox-rail-brand { display: flex; align-items: center; justify-content: space-between; gap: 5px; min-height: 42px; }
+.coinbox-wordmark { width: 133px; height: 37px; object-fit: contain; }
+.coinbox-wordmark.dark-logo, .coinbox-mark, .dark .coinbox-wordmark.light { display: none; }
+.dark .coinbox-wordmark.dark-logo { display: block; }
+.coinbox-mark { width: 36px; height: 36px; }
+.is-collapsed .coinbox-rail-brand { flex-direction: column; }
+.is-collapsed .coinbox-rail .coinbox-wordmark, .is-collapsed .coinbox-rail .coinbox-nav-link span, .is-collapsed .coinbox-nav-heading { display: none; }
+.is-collapsed .coinbox-mark { display: block; }
+.coinbox-rail nav { display: grid; gap: 3px; }
+.coinbox-nav-heading { padding: 0 9px 5px; color: var(--cb-muted); font-size: 11px; font-weight: 650; }
+.coinbox-nav-link { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 7px 9px; border: 1px solid transparent; border-radius: 8px; color: var(--cb-ink); }
+.coinbox-nav-link svg, .coinbox-button svg, .coinbox-icon-button svg, .coinbox-section-title svg { flex-shrink: 0; }
+.coinbox-nav-link[href="/ask"] svg { color: var(--cb-emerald); }
+.coinbox-nav-link:hover, .coinbox-icon-button:hover { background: var(--cb-soft); }
+.coinbox-nav-link[aria-current="page"] { background: var(--cb-panel); border-color: var(--cb-border); box-shadow: var(--cb-shadow); font-weight: 650; }
+.is-collapsed .coinbox-rail .coinbox-nav-link { justify-content: center; padding-inline: 0; }
+.coinbox-main { min-width: 0; }
+.coinbox-main:focus { outline: none; box-shadow: none; }
+.coinbox-wallet-content { max-width: 1280px; margin: 0 auto; padding: clamp(16px, 3vw, 32px); }
+.coinbox-mobile-top, .coinbox-mobile-nav { display: none; }
+.coinbox-topbar { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px clamp(14px, 2.5vw, 32px); background: var(--cb-panel); border-bottom: 1px solid var(--cb-border); min-height: 61px; }
+.coinbox-book-select { display: flex; align-items: center; gap: 8px; font-weight: 650; color: var(--cb-muted); }
+.coinbox-book-select select { color: var(--cb-ink); }
+.coinbox-wrap { max-width: 1440px; margin: 0 auto; padding: 24px clamp(14px, 2.5vw, 32px) 40px; }
+.coinbox-stack { display: grid; gap: 15px; align-content: start; min-width: 0; }
+.coinbox-page-title { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 12px; }
+.coinbox-wrap h1, .coinbox-wrap h2, .coinbox-stat strong { font-family: Geist, "DM Sans", sans-serif; letter-spacing: -.035em; font-weight: 600; }
+.coinbox-wrap h1 { font-size: clamp(28px, 3vw, 36px); line-height: 1.1; }
+.coinbox-wrap h2 { font-size: 19px; line-height: 1.3; }
+.coinbox-wrap h3 { font-family: inherit; font-size: 15px; font-weight: 650; }
+.coinbox-muted { color: var(--cb-muted); margin-block: 4px; }
+.coinbox-card { min-width: 0; background: var(--cb-panel); border: 1px solid var(--cb-border); border-radius: 11px; box-shadow: var(--cb-shadow); padding: 16px; overflow-wrap: anywhere; }
+.coinbox-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.coinbox-stat { min-width: 0; border: 1px solid var(--cb-border); box-shadow: var(--cb-shadow); border-radius: 10px; padding: 5px; background: var(--cb-soft); }
+.coinbox-stat.spending { background: linear-gradient(110deg, var(--cb-soft), var(--cb-tint)); }
+.coinbox-stat span { padding: 5px 7px; display: flex; justify-content: space-between; align-items: center; gap: 5px; font-weight: 550; }
+.coinbox-stat span svg { color: var(--cb-emerald); flex-shrink: 0; }
+.coinbox-stat strong { display: block; border-radius: 6px; background: var(--cb-panel); padding: 9px 7px; font-size: clamp(19px, 2.5vw, 30px); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.coinbox-overview-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(230px, 1fr); gap: 14px; }
+.coinbox-ask { background: linear-gradient(135deg, var(--cb-panel), var(--cb-tint)); }
+.coinbox-ask h2 { margin-top: 10px; }
+.coinbox-local { display: flex; gap: 7px; align-items: center; color: var(--cb-muted); padding-inline: 4px; }
+.coinbox-local svg, .coinbox-section-title svg { color: var(--cb-emerald); }
+.coinbox-activity, .coinbox-documents { list-style: none; padding: 0; margin-top: 7px; }
+.coinbox-activity li, .coinbox-documents li { display: flex; align-items: center; gap: 9px; border-top: 1px solid var(--cb-border); padding: 9px 0; }
+.coinbox-activity li > div, .coinbox-documents li > div { flex: 1; min-width: 0; }
+.coinbox-activity small, .coinbox-documents small, .coinbox-shell td small, .coinbox-pair small { display: block; color: var(--cb-muted); font-size: 12px; margin-block: 2px; }
+.coinbox-section-title, .coinbox-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.coinbox-section-title.spread { justify-content: space-between; }
+.coinbox-button, .coinbox-icon-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; padding: 7px 12px; border: 1px solid transparent; border-radius: 8px; font-size: 13px; font-weight: 650; text-align: center; }
+.coinbox-button.secondary { border-color: var(--cb-border); background: var(--cb-panel); }
+.coinbox-button.secondary:hover { border-color: var(--cb-emerald); }
+.coinbox-button.primary { color: var(--cb-action-text); background: var(--cb-action); }
+.coinbox-button.primary:hover { opacity: .88; }
+.coinbox-icon-button { width: 37px; padding: 0; color: var(--cb-muted); }
+.coinbox-shell :disabled { opacity: .55; cursor: not-allowed; }
+.coinbox-shell :is(button, a, select, input, summary):focus-visible { outline: 2px solid var(--cb-emerald); outline-offset: 2px; box-shadow: none; }
+.coinbox-tile { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 9px; background: var(--cb-tint); color: var(--cb-emerald); }
+.coinbox-lock-screen { display: grid; justify-items: center; padding-top: clamp(36px, 10vh, 100px); }
+.coinbox-vault-gate { width: min(100%, 490px); padding: clamp(18px, 3vw, 28px); display: grid; gap: 10px; }
+.coinbox-vault-gate form, .coinbox-mapping, .coinbox-import-form { display: grid; gap: 10px; align-content: start; justify-items: start; }
+.coinbox-vault-gate form { justify-items: stretch; }
+.coinbox-shell form label { display: grid; gap: 4px; font-size: 13px; font-weight: 620; }
+.coinbox-shell input:not([type="checkbox"]), .coinbox-shell select { min-height: 38px; min-width: 0; max-width: 100%; background: var(--cb-panel); border: 1px solid var(--cb-border); border-radius: 7px; padding: 6px 9px; font: inherit; }
+.coinbox-shell input[type="checkbox"] { accent-color: var(--cb-emerald); }
+.coinbox-shell .coinbox-upload { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px; width: 100%; border: 1px dashed var(--cb-border); border-radius: 9px; }
+.coinbox-upload svg { color: var(--cb-emerald); }
+.coinbox-upload input { width: 100%; }
+.coinbox-import-layout { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(0, 1.2fr); align-items: start; gap: 14px; }
+.coinbox-add-account, .coinbox-mapping { width: 100%; border-top: 1px solid var(--cb-border); padding-top: 12px; }
+.coinbox-add-account, .coinbox-fields { display: grid; width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.coinbox-add-account button { width: max-content; }
+.coinbox-shell form label.coinbox-check { display: flex; align-items: start; gap: 7px; }
+.coinbox-check input { margin-top: 3px; }
+.coinbox-shell details { max-width: 100%; }
+.coinbox-shell summary { cursor: pointer; color: var(--cb-emerald); }
+.coinbox-scroll { overflow: auto; width: 100%; }
+.coinbox-shell table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+.coinbox-shell :is(th, td) { padding: 8px 6px; border-bottom: 1px solid var(--cb-border); text-align: left; vertical-align: top; }
+.coinbox-shell th { background: var(--cb-rail); color: var(--cb-muted); font-size: 12px; font-weight: 650; }
+.coinbox-shell tbody tr:last-child td { border-bottom: 0; }
+.coinbox-shell td strong { display: block; }
+.coinbox-number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.coinbox-source-link { color: var(--cb-emerald); font-weight: 650; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; text-align: left; }
+.coinbox-source-link:hover { text-decoration: underline; }
+.coinbox-ledger td:last-child a { display: block; }
+.coinbox-pill { display: inline-block; border-radius: 999px; padding: 3px 7px; background: var(--cb-tint); color: var(--cb-emerald); font-size: 11px; font-weight: 650; text-transform: capitalize; }
+.coinbox-warning { display: block; width: fit-content; border-radius: 5px; padding: 3px 5px; margin-bottom: 3px; color: var(--cb-warning); background: var(--cb-warning-bg); font-size: 12px; }
+.coinbox-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; margin-top: 8px; background: var(--cb-soft); border: 1px solid var(--cb-border); border-radius: 8px; }
+.coinbox-pair button { grid-column: 1 / -1; justify-self: start; }
+.coinbox-confirm { margin-top: 12px; }
+.coinbox-alert, .coinbox-status { border-radius: 8px; padding: 9px 11px; }
+.coinbox-alert { background: var(--cb-error-bg); color: var(--cb-error); }
+.coinbox-status { background: var(--cb-tint); color: var(--cb-emerald); }
+.coinbox-empty { color: var(--cb-muted); margin-top: 10px; }
+.coinbox-source-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; padding: 10px; border-radius: 6px; background: var(--cb-soft); }
+@media (max-width: 1130px) {
+  .coinbox-import-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 800px) {
+  .coinbox-shell, .coinbox-shell.is-collapsed { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .coinbox-rail { display: none; }
+  .coinbox-mobile-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; padding: 8px 14px; background: var(--cb-rail); border-bottom: 1px solid var(--cb-border); }
+  .coinbox-mobile-top nav { width: 100%; }
+  .coinbox-mobile-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 4px env(safe-area-inset-bottom); position: fixed; z-index: 3; inset: auto 0 0; background: var(--cb-panel); border-top: 1px solid var(--cb-border); }
+  .coinbox-mobile-nav .coinbox-nav-link { flex-direction: column; justify-content: center; min-height: 48px; gap: 2px; padding: 4px; font-size: 11px; text-align: center; }
+  .coinbox-wrap, .coinbox-wallet-content { padding-bottom: 76px; }
+}
+@media (max-width: 560px) {
+  .coinbox-overview-grid { grid-template-columns: 1fr; }
+  .coinbox-stat { padding: 4px; }
+  .coinbox-stats { gap: 5px; }
+  .coinbox-stat span { font-size: 11px; padding-inline: 3px; }
+  .coinbox-stat span svg { width: 13px; }
+  .coinbox-stat strong { font-size: 17px; padding-inline: 4px; }
+  .coinbox-topbar { min-height: 54px; }
+  .coinbox-topbar .coinbox-button { padding-inline: 6px; }
+  .coinbox-book-select { gap: 4px; font-size: 12px; }
+  .coinbox-shell :is(th, td) { min-width: 92px; }
+}
+
+.coinbox-email-import { width: 100%; }
+.coinbox-email-review { display: grid; gap: 9px; margin-top: 8px; padding: 12px; border: 1px solid var(--cb-border); border-radius: 8px; background: var(--cb-soft); }
+.coinbox-email-review svg { display: inline-block; color: var(--cb-emerald); vertical-align: middle; }
+.coinbox-month-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 0; margin: 14px 0 0; list-style: none; }
+.coinbox-month-grid li { padding: 8px; border-radius: 7px; background: var(--cb-soft); }
+.coinbox-month-grid li[data-status="Rows available"] { color: var(--cb-emerald); background: var(--cb-tint); }
+.coinbox-month-grid li[data-status="Review open"] { color: var(--cb-warning); background: var(--cb-warning-bg); }
+.coinbox-month-grid small { display: block; font-size: 11px; }
+.coinbox-chat, .coinbox-chat-history { display: grid; gap: 12px; }
+.coinbox-chat-history article { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--cb-border); border-radius: 8px; background: var(--cb-soft); }
+.coinbox-chat-history p { white-space: pre-line; }
+.coinbox-chat form input { flex: 1 1 180px; }
+@media (max-width: 560px) { .coinbox-month-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.coinbox-ask-spotlight { display: grid; grid-template-columns: auto auto minmax(160px, 1fr); align-items: center; gap: 13px; background: linear-gradient(135deg, var(--cb-panel), var(--cb-tint)); }
+.coinbox-ask-spotlight form { justify-content: flex-end; }
+.coinbox-shell .coinbox-ask-spotlight input:not([type="checkbox"]) { flex: 1 1 160px; max-width: 520px; }
+.coinbox-trend { display: grid; gap: 10px; list-style: none; margin: 12px 0 0; padding: 0; }
+.coinbox-trend li { display: grid; grid-template-columns: minmax(72px, auto) minmax(35px, 1fr) auto; align-items: center; gap: 8px; }
+.coinbox-trend-track { display: block; height: 8px; border-radius: 6px; background: var(--cb-soft); overflow: hidden; }
+.coinbox-trend-track span { display: block; height: 100%; border-radius: inherit; background: var(--cb-emerald); }
+@media (max-width: 560px) { .coinbox-ask-spotlight { grid-template-columns: auto 1fr; } .coinbox-ask-spotlight form { grid-column: 1 / -1; } }

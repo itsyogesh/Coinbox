@@ -1,29 +1,21 @@
 # Coinbox
 
-> **Portfolio Intelligence, Not Just Tracking**
+Coinbox combines a desktop crypto wallet with a private finance workspace for personal and business books. Use a local encrypted finance vault or connect to a server you control.
 
-A local-first, multi-chain cryptocurrency portfolio tracker with AI-powered transaction categorization and comprehensive tax reporting.
+## Private finance preview
 
-![Version](https://img.shields.io/badge/version-2.0.0--alpha-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
+| Surface | Included | Still open |
+| --- | --- | --- |
+| Desktop | Standalone and connected finance modes, plus the existing crypto wallet | Signed distribution |
+| Phone browser | Responsive finance workspace served by the private host | Physical iPhone and Android verification |
+| Native mobile | Planned iOS and Android clients | Capture, offline drafts, secure pairing, and signed releases |
+| Private server | Rust API, web app, book-scoped access, encrypted vault, and backup and restore | Docker deployment and verification on the target host |
 
----
+- [Desktop quickstart and sample walkthrough](docs/PRIVATE_FINANCE.md)
+- [Private server, phone browser, Gmail, and backup runbook](docs/COINBOX_SELF_HOST.md)
+- [Implementation status, bank PDF references, and rollout checklist](docs/COINBOX_STATUS.md)
 
-## What is Coinbox?
-
-Coinbox is a **desktop application** that helps you:
-
-- **Track** your crypto portfolio across Bitcoin and Ethereum/L2s
-- **Categorize** transactions automatically using AI
-- **Generate** tax reports for US, Europe, and India
-- **Own your data** - everything stays on your machine
-
-Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your private keys, transaction history, and financial data never leave your device.
-
----
-
-## Current Status
+## Wallet development history
 
 ### Sprint 1-2: Foundation ✅ COMPLETE
 
@@ -89,8 +81,6 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 - Etherscan V2 unified API for transaction history (via Tauri CORS bypass)
 - Family-grouped wallet display (EVM L2s grouped under "Ethereum & L2s")
 
-### Up Next: Sprint 9-10 - Tax Reporting & AI
-
 ---
 
 ## Features
@@ -106,141 +96,39 @@ Unlike cloud-based trackers, Coinbox runs entirely on your computer. Your privat
 | **Base** | ✅ Live | Full L2 support |
 | **Polygon** | ✅ Live | Full L2 support |
 
-### Tax Reporting
+### Reports and Ask Coinbox
 
-| Jurisdiction | Cost Basis Methods | Status |
-|--------------|-------------------|--------|
-| **United States** | FIFO, LIFO, HIFO, Specific ID | 🔜 Sprint 5 |
-| **United Kingdom** | Section 104 pool | 🔜 Sprint 5 |
-| **Germany** | FIFO (1-year tax-free) | 🔜 Sprint 5 |
-| **France** | Average cost | 🔜 Sprint 5 |
-| **India** | FIFO (30% flat) | 🔜 Sprint 5 |
-
-### AI Features
-
-- **Transaction Categorization**: Automatically classify transactions (swap, airdrop, staking, etc.)
-- **Natural Language Queries**: Ask questions about your portfolio in plain English
-- **BYOK (Bring Your Own Key)**: Use your own Anthropic or OpenAI API key
-
----
+The finance workspace exports an Indian fiscal-year ledger and a statement evidence index for accountant review. Ask Coinbox uses the selected book's ledger and links to the contributing source rows. An optional desktop Ollama integration classifies questions locally. Crypto cost basis and provider-specific exchange and payout reconciliation remain planned.
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           COINBOX 2.0                                │
-│                      Tauri Desktop Application                       │
-├─────────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                 FRONTEND (React 18 + TypeScript)              │  │
-│  │                                                               │  │
-│  │  • Viem for Ethereum RPC calls                               │  │
-│  │  • Zustand for state management                              │  │
-│  │  • TanStack Query for data fetching                          │  │
-│  │  • Framer Motion for animations                              │  │
-│  │  • Tailwind CSS + shadcn/ui for styling                      │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                │                                     │
-│                          Tauri IPC                                   │
-│                                │                                     │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    RUST BACKEND                               │  │
-│  │                                                               │  │
-│  │  • BDK (Bitcoin Dev Kit) for Bitcoin wallet                  │  │
-│  │  • SQLite + SQLCipher for encrypted storage                  │  │
-│  │  • Tax engine with multi-jurisdiction support                │  │
-│  │  • AI provider abstraction (Anthropic, OpenAI)               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
+The React and TypeScript workspace uses the same Rust finance core in both modes. Standalone desktop calls it through Tauri and stores records in a local SQLCipher vault. Connected desktop and browser clients call the private Rust server over HTTPS and use its vault. Wallet signing uses separate desktop storage.
 
 ## Getting Started
 
-### Prerequisites
+Use Node.js 22, pnpm 9.15.0, a current stable Rust toolchain, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
-- **Node.js** 18+
-- **Rust** 1.70+
-- **System dependencies** (Linux only):
-  ```bash
-  sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-  ```
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/itsyogesh/Coinbox
-cd Coinbox
-
-# Install dependencies (requires pnpm)
-pnpm install
-
-# Run in development mode
-pnpm tauri:dev
-
-# Build for production
-pnpm tauri:build
-
-# Type check all packages
-pnpm typecheck
+```sh
+pnpm install --frozen-lockfile
+COINBOX_FINANCE_DIR="$(mktemp -d)" pnpm tauri:dev
 ```
 
----
+Open **Import Inbox** and use the sample bank and card statements. For a persistent profile or a desktop build, follow the [desktop guide](docs/PRIVATE_FINANCE.md). For the browser and connected desktop modes, follow the [server runbook](docs/COINBOX_SELF_HOST.md).
 
-## Project Structure
+## Project structure
 
-```
-coinbox/                         # pnpm workspace root
-├── apps/
-│   ├── desktop/                 # Tauri desktop app (@coinbox/desktop)
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   │   ├── layout/     # AppLayout, navigation
-│   │   │   │   └── ui/         # shadcn/ui components
-│   │   │   ├── hooks/          # Custom React hooks
-│   │   │   ├── lib/            # Utilities, animations
-│   │   │   ├── pages/          # Page components
-│   │   │   └── stores/         # Zustand stores (future)
-│   │   ├── src-tauri/
-│   │   │   └── src/
-│   │   │       ├── commands/   # Tauri IPC commands
-│   │   │       ├── db/         # SQLite database
-│   │   │       └── error.rs    # Error handling
-│   │   └── package.json
-│   └── mobile/                  # Future: React Native or Tauri Mobile
-├── packages/
-│   └── core/                    # Shared types & business logic (@coinbox/core)
-│       └── src/
-│           └── types/           # Chain, Wallet, Transaction, Tax types
-├── .claude/
-│   └── skills/                  # AI design guidelines
-├── pnpm-workspace.yaml
-├── tsconfig.base.json           # Shared TypeScript config
-├── MODERNIZATION_PLAN.md        # Detailed technical plan
-└── README.md                    # This file (live product doc)
-```
+| Path | Responsibility |
+| --- | --- |
+| `apps/desktop/` | Shared React finance UI, Tauri desktop integration, and wallet |
+| `apps/finance-server/` | Private Rust server, web UI, device grants, and MCP |
+| `packages/finance/` | SQLCipher vault, statement parsing, ledger, and reports |
+| `packages/core/` and `packages/chains/` | Shared types and chain registry |
+| `deploy/` | Finance server Dockerfile and Compose configuration |
+| `app/` and `server/` | Legacy web app and backend |
 
----
+## Design system
 
-## Design System
-
-### Brand Colors
-
-| Color | Value | Usage |
-|-------|-------|-------|
-| **Primary (Violet)** | `#A78BFA` → `#7C3AED` | CTAs, active states, brand accent |
-| **Accent (Teal)** | `#2DD4BF` | Highlights, secondary CTAs |
-| **Success** | `#10B981` | Positive gains, confirmations |
-| **Destructive** | `#EF4444` | Losses, errors, warnings |
-| **Background** | `#0f0e17` | Deep layered dark theme |
-
-### Typography
-
-- **Headings**: Sora (geometric, modern)
-- **Body**: Inter (clean, readable)
-- **Numbers/Mono**: JetBrains Mono (for addresses, amounts, tabular data)
+The finance workspace uses the Coinbox wordmark, emerald accents, Geist headings, and DM Sans body text. The sidebar collapses on desktop and the phone layout uses bottom navigation.
 
 ### Chain Colors
 
@@ -255,73 +143,18 @@ coinbox/                         # pnpm workspace root
 
 ---
 
-## Development Roadmap
+## Development roadmap
 
-### Phase 1: Foundation ✅
-- [x] Tauri + React project setup
-- [x] Database schema + SQLite integration
-- [x] Basic app shell with navigation
-- [x] Settings page structure
-- [x] Design system (Tailwind, shadcn/ui, Framer Motion)
-- [x] Brand guidelines and skills
-
-### Phase 2: Wallet Core ✅
-- [x] HD wallet generation (BIP39/BIP44/SLIP-0010)
-- [x] Mnemonic import/export with download backup
-- [x] Watch-only address import with validation
-- [x] Encrypted storage (Stronghold + Argon2)
-- [x] Wallet management UI (create, import, details, delete)
-- [x] Multi-chain support (Bitcoin, Ethereum, L2s, Solana)
-
-### Phase 3: Bitcoin Integration ✅
-- [x] BDK adapter implementation
-- [x] Electrum/Esplora sync
-- [x] Balance fetching
-- [x] Transaction history
-- [x] Tauri commands + TypeScript bindings
-- [ ] Send Bitcoin transaction
-- [ ] Bitcoin UI components
-
-### Phase 4: Ethereum Integration
-- [ ] Viem setup + Tauri signing bridge
-- [ ] ERC-20 token support
-- [ ] Transaction history
-- [ ] L2 support (Arbitrum, Optimism, Base, Polygon)
-- [ ] Chain provider settings
-
-### Phase 5: Tax Engine
-- [ ] Cost basis tracking (FIFO/LIFO/HIFO)
-- [ ] Rule-based categorization
-- [ ] Tax calculations (multi-jurisdiction)
-- [ ] Report generation (CSV, Form 8949, TurboTax)
-- [ ] Tax UI pages
-
-### Phase 6: AI Integration
-- [ ] AI provider abstraction (Anthropic, OpenAI)
-- [ ] API key management UI
-- [ ] Transaction categorization
-- [ ] Natural language queries
-- [ ] Chat interface
-
-### Phase 7: Polish
-- [ ] Security hardening
-- [ ] Performance optimization
-- [ ] Accessibility audit
-- [ ] Testing (Rust + React)
-- [ ] Documentation
-
----
+The [implementation handoff](docs/COINBOX_STATUS.md) tracks the private-host rollout, mobile verification, native mobile, issuer-specific imports, and release work.
 
 ## Contributing
-
-We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.md) (coming soon).
 
 ### Development Workflow
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes
-4. Run tests: `npm run test` (coming soon)
+4. Run the [workspace checks](docs/COINBOX_STATUS.md#verification-commands)
 5. Submit a pull request
 
 ### Code Style
@@ -359,16 +192,14 @@ We welcome contributions! Please see our [contribution guidelines](CONTRIBUTING.
 
 ### Why Local-First?
 
-- **Privacy**: Your financial data stays on your device
-- **Security**: No cloud servers to hack
-- **Reliability**: Works offline
-- **Ownership**: Export your data anytime
+- Standalone finance works offline after setup. Connected clients need access to your private server.
+- Export ledger data and keep an encrypted finance backup.
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+The workspace package declares an MIT license. Bundled third-party assets retain their license notices.
 
 ---
 
@@ -389,5 +220,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-*Last Updated: January 2026*
 *Version: 2.0.0-alpha*

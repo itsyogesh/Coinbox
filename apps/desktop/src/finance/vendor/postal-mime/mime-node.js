@@ -1,0 +1,671 @@
+import { decodeParameterValueContinuations, decodeText, decodeUtf8OrWindows1252, foldLineBreaks, isWsp } from './decode-strings.js';
+import PassThroughDecoder from './pass-through-decoder.js';
+import Base64Decoder from './base64-decoder.js';
+import QPDecoder from './qp-decoder.js';
+import { createError } from './errors.js';
+// Header lines are decoded with ignoreBOM so that a U+FEFF at the start of a line is
+// kept as a character instead of being swallowed. A stripped BOM turns a line a strict
+// parser skips into a genuine header, which is how a second `From:` gets smuggled past
+// anything that inspects the raw message.
+//
+// Raw 8-bit header text is UTF-8 (RFC 6532), and a line that is not is legacy mail in a
+// single byte charset, read as windows-1252 rather than as replacement characters, see
+// decodeUtf8OrWindows1252.
+const headerDecoder = new TextDecoder('utf-8', { ignoreBOM: true });
+// number of pieces decodeFlowedText collects before joining them
+const FLOWED_JOIN_INTERVAL = 4096;
+// What a header line costs to hold, at the least. The decoded line, its entry in
+// rawHeaderLines and the parsed header come to a few hundred bytes for a line of one
+// byte, so two million such lines stayed inside maxHeadersSize while they held a few
+// hundred megabytes. Counting every line for at least this much keeps the memory in step
+// with the budget, 32768 lines at the default 2 MiB.
+const HEADER_LINE_MIN_COST = 64;
+// Trims the SP and HTAB around a field body, the only whitespace RFC 5322 reads as padding
+// there. String.prototype.trim also strips U+00A0, U+FEFF, U+2028 and the rest of the
+// Unicode spaces, which a raw UTF-8 header (RFC 6532) may carry as content.
+//
+// An index scan rather than `/^[ \t]+|[ \t]+$/g`, which retries the trailing branch at
+// every position of a blank run that is followed by other text, so a single header with
+// a long run of spaces in the middle took seconds to trim.
+const trimWsp = (str) => {
+    let start = 0;
+    let end = str.length;
+    while (start < end && isWsp(str.charCodeAt(start))) {
+        start++;
+    }
+    while (end > start && isWsp(str.charCodeAt(end - 1))) {
+        end--;
+    }
+    return str.slice(start, end);
+};
+// The start of a header field, the shape Python's header pattern reads: a field name of
+// printable ASCII other than the colon (RFC 5322 3.6.8 ftext), an empty one included, and
+// the colon itself, with the whitespace in between that processHeaders tolerates as well,
+// or the `From ` of an mbox separator line, which every reader lets through
+const FIELD_START = /^(?:From |[!-9;-~]*[ \t]*:)/;
+// Headers that decide how this part's body is read, see processHeaders
+const CONTENT_HEADERS = new Set([
+    'content-type',
+    'content-transfer-encoding',
+    'content-disposition',
+    'content-id',
+    'content-description'
+]);
+export default class MimeNode {
+    constructor(options) {
+        this.options = options;
+        this.postalMime = options.postalMime;
+        // Counted across the whole message like the header size, nested message/rfc822
+        // parts included, so that neither a multipart nor a forward can carry the budget
+        // again for every part it declares
+        const limits = this.postalMime.limits;
+        this.postalMime.counters.partCount++;
+        if (this.postalMime.counters.partCount > limits.maxPartCount) {
+            throw createError('EMAXPARTCOUNT', `Maximum MIME part count of ${limits.maxPartCount} parts exceeded`);
+        }
+        this.childNodes = [];
+        // Cursor into childNodes for finalizeChildNodes. Every new part of a multipart
+        // finalizes its parent's children, so re-walking the whole array each time is
+        // quadratic in the number of parts.
+        this.finalizedChildCount = 0;
+        if (options.parentNode) {
+            this.parentNode = options.parentNode;
+            this.depth = this.parentNode.depth + 1;
+            if (this.depth > limits.maxNestingDepth) {
+                throw createError('EMAXNESTINGDEPTH', `Maximum MIME nesting depth of ${limits.maxNestingDepth} levels exceeded`);
+            }
+            options.parentNode.childNodes.push(this);
+        }
+        else {
+            this.depth = 0;
+        }
+        this.state = 'header';
+        this.headerLines = [];
+        // RFC 2046 Section 5.1.5: multipart/digest defaults to message/rfc822
+        const parentMultipartType = options.parentMultipartType || null;
+        const defaultContentType = parentMultipartType === 'digest' ? 'message/rfc822' : 'text/plain';
+        // The value is replaced by the first matching header and the rest is derived
+        // from it, see the CONTENT_HEADERS pass in processHeaders
+        this.contentType = {
+            value: defaultContentType,
+            parsed: { value: defaultContentType, params: {} },
+            multipart: false
+        };
+        this.contentTransferEncoding = {
+            value: '8bit',
+            encoding: ''
+        };
+        this.contentDisposition = {
+            value: '',
+            parsed: { value: '', params: {} }
+        };
+        this.headers = [];
+        this.rawHeaderLines = [];
+        this.contentDecoder = null;
+        this.content = null;
+    }
+    // `transferEncoding` is the lowercased token of the header, see processHeaders. It is
+    // matched whole: `x-base64` or `7bit-base64` is no encoding Python or mailparser
+    // decode, and decoding it here rendered as markup a body every other reader keeps as
+    // inert base64
+    setupContentDecoder(transferEncoding) {
+        if (transferEncoding === 'base64') {
+            this.contentDecoder = new Base64Decoder();
+        }
+        else if (transferEncoding === 'quoted-printable') {
+            this.contentDecoder = new QPDecoder();
+        }
+        else {
+            this.contentDecoder = new PassThroughDecoder();
+        }
+    }
+    // `boundaryEnded` tells that the part was ended by a multipart boundary, which owns
+    // the line break after the last line of the part (RFC 2046 5.1.1)
+    async finalize(boundaryEnded = false) {
+        if (this.state === 'finished') {
+            return;
+        }
+        if (this.state === 'header') {
+            this.endHeaders();
+        }
+        // remove self from boundary listing
+        this.postalMime.boundaries.remove(this);
+        await this.finalizeChildNodes(boundaryEnded);
+        this.content = this.contentDecoder ? await this.contentDecoder.finalize(boundaryEnded) : null;
+        // The decoder buffers every body line it received, so keeping it around
+        // retains a second copy of the content for the lifetime of the node.
+        // Nothing reads it once the node is finished, so release it here.
+        this.contentDecoder = null;
+        this.state = 'finished';
+    }
+    async finalizeChildNodes(boundaryEnded = false) {
+        // Children are only ever appended, so everything before the cursor is already
+        // finished and re-visiting it only costs time.
+        while (this.finalizedChildCount < this.childNodes.length) {
+            await this.childNodes[this.finalizedChildCount++].finalize(boundaryEnded);
+        }
+    }
+    // Strip RFC 822 comments (parenthesized text) from structured header values.
+    //
+    // Inside an unquoted parameter value a parenthesis that continues the current token is
+    // content, because `filename=Invoice(1).pdf` is a filename and not a token followed by
+    // a comment, and deleting the parens silently renames the attachment.
+    stripComments(str) {
+        let result = '';
+        let depth = 0;
+        let escaped = false;
+        let inQuote = false;
+        // where the outermost comment opened, for the unbalanced case below
+        let commentStart = -1;
+        // A parameter value starts at `=` and ends at the `;` that begins the next one
+        let inParameterValue = false;
+        // The characters kept are copied into the result as runs, a run ending at the
+        // next character dropped. Appended one at a time they made a cons string of a
+        // node per character, tens of megabytes of pointer chasing for the collector on a
+        // header of a megabyte, and the parse grew faster than the header did
+        let runStart = 0;
+        const drop = (i) => {
+            result += str.slice(runStart, i);
+            runStart = i + 1;
+        };
+        // Whether anything has been kept, and whether the last character kept is SP or
+        // HTAB. Kept up to date on every character, because testing `/[ \t]$/` against the
+        // result flattens the whole string on each `(` and is quadratic in the length of
+        // the header.
+        let keptAny = false;
+        let endsWithWsp = false;
+        const keep = (i) => {
+            keptAny = true;
+            endsWithWsp = isWsp(str.charCodeAt(i));
+        };
+        // A comment may only appear where linear whitespace is allowed, so inside a
+        // parameter value the parenthesis has to follow whitespace to open one. Outside
+        // one, eg. after the type itself, anything goes.
+        const opensComment = () => !inParameterValue || !keptAny || endsWithWsp;
+        for (let i = 0; i < str.length; i++) {
+            const chr = str.charAt(i);
+            if (escaped) {
+                escaped = false;
+            }
+            else if (chr === '\\') {
+                escaped = true;
+            }
+            else if (chr === '"' && depth === 0) {
+                inQuote = !inQuote;
+            }
+            else if (!inQuote) {
+                if (chr === '(' && opensComment()) {
+                    if (depth === 0) {
+                        commentStart = i;
+                    }
+                    depth++;
+                    drop(i);
+                    continue;
+                }
+                if (chr === ')' && depth > 0) {
+                    depth--;
+                    drop(i);
+                    continue;
+                }
+                if (depth === 0) {
+                    if (chr === '=') {
+                        inParameterValue = true;
+                    }
+                    else if (chr === ';') {
+                        inParameterValue = false;
+                    }
+                }
+            }
+            if (depth === 0) {
+                keep(i);
+            }
+            else {
+                drop(i);
+            }
+        }
+        if (depth === 0) {
+            return result + str.slice(runStart);
+        }
+        // An unbalanced `(` is not a comment. Dropping everything after it would take any
+        // parameter that follows with it, including the boundary that holds the message
+        // together, so the dangling text is only discarded when nothing follows it.
+        return str.indexOf(';', commentStart) < 0 ? result + str.slice(runStart) : str;
+    }
+    parseStructuredHeader(str) {
+        // Strip RFC 822 comments before parsing
+        str = this.stripComments(str);
+        let response = {
+            value: '',
+            params: {}
+        };
+        let key = false;
+        let value = '';
+        let stage = 'value';
+        // Whitespace seen outside a quoted string is held back until a significant
+        // character follows it, so surrounding whitespace can be dropped without
+        // trimming spaces the sender quoted on purpose. Trimming the stored value
+        // instead loses the trailing space in `filename*0="Annual Report "`, which the
+        // next continuation section is meant to be appended to.
+        let pendingSpace = '';
+        let quoteClosed = false;
+        let quote = false;
+        let escaped = false;
+        let chr;
+        // Whitespace ahead of the first character of a value is padding and is dropped, the
+        // whitespace between two characters of it is content
+        const flushSpace = () => {
+            if (value.length) {
+                value += pendingSpace;
+            }
+            pendingSpace = '';
+        };
+        // The characters of the value are copied as runs, see stripComments. A run is the
+        // characters from runStart on, none is open while it is -1, and it is closed by
+        // whatever is not a character of the value
+        let runStart = -1;
+        const closeRun = (end) => {
+            if (runStart >= 0) {
+                value += str.slice(runStart, end);
+                runStart = -1;
+            }
+        };
+        // the character at i is part of the value
+        const addChr = (i) => {
+            if (runStart < 0) {
+                flushSpace();
+                runStart = i;
+            }
+        };
+        const takeValue = () => {
+            const result = value;
+            value = '';
+            pendingSpace = '';
+            quoteClosed = false;
+            return result;
+        };
+        // A duplicated parameter resolves to its first occurrence, matching how duplicated
+        // headers are resolved. Letting the last one win means `boundary="b"; boundary="c"`
+        // registers a boundary that no delimiter in the message matches, which drops the
+        // body without an error. hasOwnProperty, because a parameter may be named
+        // `constructor` or `toString`. A name is a token and a token is never empty, so the
+        // nameless parameter of `text/plain; =v` names nothing and is dropped.
+        const storeParam = (name, result) => {
+            if (name && !Object.prototype.hasOwnProperty.call(response.params, name)) {
+                response.params[name] = result;
+            }
+        };
+        const storeValue = () => {
+            const result = takeValue();
+            if (key === false) {
+                response.value = result;
+            }
+            else {
+                storeParam(key, result);
+            }
+        };
+        // A parameter name with no `=` is a valueless parameter, not the start of the
+        // next one. Without this the name would keep growing across the `;` and swallow
+        // whatever followed, which is how `x=1; flag; boundary="AAA"` loses its boundary.
+        const storeEmptyKey = () => {
+            storeParam(takeValue().trim().toLowerCase(), '');
+        };
+        for (let i = 0, len = str.length; i < len; i++) {
+            chr = str.charAt(i);
+            switch (stage) {
+                case 'key':
+                    if (chr === '=') {
+                        closeRun(i);
+                        key = takeValue().trim().toLowerCase();
+                        stage = 'value';
+                        break;
+                    }
+                    if (chr === ';') {
+                        closeRun(i);
+                        storeEmptyKey();
+                        break;
+                    }
+                    if (runStart < 0) {
+                        runStart = i;
+                    }
+                    break;
+                case 'value':
+                    if (quoteClosed && chr !== ';') {
+                        // Nothing behind a closed quoted string reaches the value. RFC 2045
+                        // says a parameter value is a token or a quoted string, not both, so
+                        // what follows one is junk and only the `;` that ends the parameter
+                        // still counts. Tested ahead of the branches rather than beside the
+                        // append at the foot of them, where each branch above was a way
+                        // around it. A second `"` reopened quoting, which both carried the
+                        // whitespace in front of it into the value and took the `;` along, so
+                        // `boundary="AAA" "; boundary=BBB"` registered a boundary of `AAA `
+                        // that no delimiter matches and the whole body was dropped without an
+                        // error; the escape branch appended arbitrary characters the same way.
+                        // quoteClosed is only ever set while no quote is open, and this is
+                        // what keeps one from being opened afterwards.
+                        escaped = false;
+                        break;
+                    }
+                    if (escaped) {
+                        addChr(i);
+                    }
+                    else if (quote && chr === '\\') {
+                        // backslash only escapes inside a quoted string, everywhere else
+                        // it is an ordinary character. Treating it as an escape turns
+                        // `filename=C:\Users\me\a.txt` into `C:Usersmea.txt`.
+                        closeRun(i);
+                        escaped = true;
+                        continue;
+                    }
+                    else if (quote && chr === quote) {
+                        closeRun(i);
+                        quote = false;
+                        quoteClosed = true;
+                    }
+                    else if (!quote && chr === '"') {
+                        closeRun(i);
+                        quote = chr;
+                        flushSpace();
+                    }
+                    else if (!quote && chr === ';') {
+                        closeRun(i);
+                        storeValue();
+                        stage = 'key';
+                    }
+                    else if (!quote && (chr === ' ' || chr === '\t')) {
+                        closeRun(i);
+                        pendingSpace += chr;
+                    }
+                    else {
+                        addChr(i);
+                    }
+                    escaped = false;
+                    break;
+            }
+        }
+        closeRun(str.length);
+        // finalize remainder
+        if (stage === 'value') {
+            storeValue();
+        }
+        else {
+            // treat as key without value, see emptykey:
+            // Header-Key: somevalue; key=value; emptykey
+            storeEmptyKey();
+        }
+        if (response.value) {
+            response.value = response.value.toLowerCase();
+        }
+        // convert Parameter Value Continuations into single strings
+        decodeParameterValueContinuations(response);
+        return response;
+    }
+    // Unfolds format=flowed text (RFC 3676 4.1). A line is read as its quote marks, one
+    // space of stuffing and its content, in that order, and a line whose content ends in a
+    // space is flowed: the next line of the same quote depth continues its paragraph. The
+    // paragraph ends at a fixed line, at a change of quote depth and at the signature
+    // separator, which is neither flowed nor fixed. Joining a quoted paragraph used to
+    // leave the quote marks of the continuation lines inside the text, so a quoted reply
+    // read `> one > two` instead of `> one two`.
+    //
+    // The quote marks and stuffing of the first line of a paragraph are kept as they were
+    // written, so a fixed quoted line comes out exactly as it went in. An unquoted stuffed
+    // line loses its stuffing, which is all the stuffing is for.
+    decodeFlowedText(str, delSp) {
+        // Pieces of the result. Growing a single string instead flattens the whole
+        // paragraph again on each line, which is quadratic in the length of a paragraph.
+        // `parts` holds an entry or two per line, so it is joined into `chunks` every few
+        // thousand entries to keep memory following the length of the text rather than
+        // the number of lines. Its last entry stays behind, since delsp trims it when
+        // the next line continues the paragraph.
+        const chunks = [];
+        let parts = [];
+        // whether the previous line was flowed, and the quote depth of its paragraph
+        let flowed = false;
+        let depth = 0;
+        for (let lineStart = 0; lineStart <= str.length;) {
+            let lineEnd = str.indexOf('\n', lineStart);
+            if (lineEnd < 0) {
+                lineEnd = str.length;
+            }
+            const line = str.slice(lineStart, lineEnd);
+            let quoteDepth = 0;
+            while (line.charCodeAt(quoteDepth) === 0x3e /* > */) {
+                quoteDepth++;
+            }
+            const contentStart = line.charCodeAt(quoteDepth) === 0x20 ? quoteDepth + 1 : quoteDepth;
+            const content = line.slice(contentStart);
+            const isSignature = content === '-- ';
+            if (flowed && quoteDepth === depth && !isSignature) {
+                if (delSp) {
+                    // delsp adds the space to make the text foldable, so it is not content
+                    const last = parts[parts.length - 1];
+                    parts[parts.length - 1] = last.slice(0, -1);
+                }
+                parts.push(content);
+            }
+            else {
+                if (lineStart) {
+                    parts.push('\n');
+                }
+                parts.push(quoteDepth ? line : content);
+            }
+            flowed = !isSignature && content.endsWith(' ');
+            depth = quoteDepth;
+            if (parts.length >= FLOWED_JOIN_INTERVAL) {
+                const last = parts.pop();
+                chunks.push(parts.join(''));
+                parts = [last];
+            }
+            lineStart = lineEnd + 1;
+        }
+        chunks.push(parts.join(''));
+        return chunks.join('');
+    }
+    getTextContent() {
+        if (!this.content) {
+            return '';
+        }
+        // The bytes keep the line endings the part was sent with, see PassThroughDecoder,
+        // which differ from one transfer encoding to the next. Text is normalized to LF so
+        // that a consumer does not get CRLF from one message and LF from another
+        let str = decodeText(this.content, this.contentType.parsed.params.charset, this.contentType.parsed.value === 'text/html').replace(/\r\n/g, '\n');
+        // format=flowed is defined for text/plain (RFC 3676), and a browser never unfolds
+        // an html part. Unfolded here anyway, `<scri \r\npt>` under delsp=yes was joined
+        // into a tag that neither Python nor a browser given the raw bytes sees
+        if (this.contentType.parsed.value === 'text/plain' && /^flowed$/i.test(this.contentType.parsed.params.format)) {
+            str = this.decodeFlowedText(str, /^yes$/i.test(this.contentType.parsed.params.delsp));
+        }
+        return str;
+    }
+    processHeaders() {
+        // First pass: group folded continuation lines with the header they belong to.
+        //
+        // Only SP and HTAB continue a header (RFC 5322 3.2.2 WSP). JS `\s` also matches
+        // NBSP, vertical tab, form feed and U+2028, so a line starting with one of those
+        // used to be absorbed into the header above it and disappear from both `headers`
+        // and `headerLines` while a strict parser still sees it as a header of its own.
+        //
+        // Collecting into an array and joining once keeps this linear. Appending onto the
+        // previous string in a backward pass re-scans the joined value on every line,
+        // which is quadratic in the number of folds and lets a message that fits inside
+        // maxHeadersSize burn seconds of CPU.
+        let foldedLines = [];
+        for (let line of this.headerLines) {
+            if (foldedLines.length && /^[ \t]/.test(line)) {
+                foldedLines[foldedLines.length - 1].push(line);
+            }
+            else {
+                foldedLines.push([line]);
+            }
+        }
+        let seenContentHeaders = new Set();
+        // Second pass: process headers in document order
+        for (let parts of foldedLines) {
+            let rawLine = parts.join('\n');
+            // The field name is kept as it was written, whitespace included. RFC 5322 puts
+            // the colon right after the name and only its obsolete syntax lets whitespace
+            // come between the two, so `From :` names a different field than `From:`, as
+            // Go reads it, and the first line of a message may start with whitespace while
+            // it is a fold of nothing, a line Python drops and Go rejects the message for.
+            // Trimming the name made such a line the canonical header, and since the first
+            // occurrence of a header wins, a ` From:` first line or a `From :` ahead of the
+            // genuine From named the sender here while a verifier reading the other had
+            // authenticated the one this parser ignored. The same put a Content-Type ahead
+            // of the one every other parser reads the body by. Leaving the whitespace in
+            // the key keeps the line visible without letting it collide with a genuine
+            // header. A line whose name holds anything else, a non-ASCII space say, is no
+            // field at all and ends the headers, see feed.
+            let sep = rawLine.indexOf(':');
+            let rawKey = sep < 0 ? rawLine : rawLine.slice(0, sep);
+            // Store raw line with lowercase key
+            this.rawHeaderLines.push({
+                key: rawKey.toLowerCase(),
+                line: rawLine
+            });
+            // Unfolding removes the line break and keeps the folding whitespace, so
+            // `Subject: Hello\r\n    World` stays `Hello    World`. Collapsing every
+            // whitespace run instead also rewrote boundary values and filenames, and it
+            // replaced the non-ASCII spaces that raw UTF-8 headers (RFC 6532) may carry.
+            let unfoldedLine = parts.join('');
+            sep = unfoldedLine.indexOf(':');
+            let key = sep < 0 ? unfoldedLine : unfoldedLine.slice(0, sep);
+            // A bare CR is not legal in a field body, see foldLineBreaks
+            let value = sep < 0 ? '' : trimWsp(foldLineBreaks(unfoldedLine.slice(sep + 1)));
+            this.headers.push({ key: key.toLowerCase(), originalKey: key, value });
+            // A header that decides how the body is read must resolve the same way every
+            // time it is duplicated, otherwise a message can present one Content-Type to a
+            // scanner and a different one here. Every one of these takes the first
+            // occurrence and later copies are ignored.
+            const lowerKey = key.toLowerCase();
+            if (CONTENT_HEADERS.has(lowerKey) && !seenContentHeaders.has(lowerKey)) {
+                seenContentHeaders.add(lowerKey);
+                switch (lowerKey) {
+                    case 'content-type':
+                        this.contentType.value = value;
+                        break;
+                    case 'content-transfer-encoding':
+                        this.contentTransferEncoding.value = value;
+                        break;
+                    case 'content-disposition':
+                        this.contentDisposition.value = value;
+                        break;
+                    case 'content-id':
+                        this.contentId = value;
+                        break;
+                    case 'content-description':
+                        this.contentDescription = value;
+                        break;
+                }
+            }
+        }
+        this.contentType.parsed = this.parseStructuredHeader(this.contentType.value);
+        this.contentType.multipart = /^multipart\//i.test(this.contentType.parsed.value)
+            ? this.contentType.parsed.value.slice(this.contentType.parsed.value.indexOf('/') + 1)
+            : false;
+        // A boundary does not end in whitespace (RFC 2046 5.1.1, bcharsnospace), and one
+        // written with some anyway, `boundary="abc "`, is `abc` to Python. Registered as
+        // written it matched no delimiter line and the whole body was dropped without a
+        // trace, an attachment included. A delimiter line written with the space still
+        // matches, since a boundary line may end in whitespace. trimEnd rather than
+        // trimWsp, because Python strips any whitespace here.
+        //
+        // A boundary is ASCII as well (RFC 2046 5.1.1, bchars), and Python matches no line
+        // against one that is not. One holding a non-ASCII character came out of a header
+        // line decoded as windows-1252 and re-encoded as UTF-8, or was written in UTF-8 to
+        // begin with. Matched here, `boundary="ab\xE9cd"` found the parts under lines of
+        // `--ab\xC3\xA9cd` that a scanner built on Python never saw, and with the same byte
+        // on both sides nothing matched and the body was dropped without a trace. Such a
+        // boundary counts as none, so the body reads as text below
+        let boundary = this.contentType.multipart ? (this.contentType.parsed.params.boundary || '').trimEnd() : '';
+        if (/[^\x00-\x7f]/.test(boundary)) {
+            boundary = '';
+        }
+        if (this.contentType.multipart && !boundary) {
+            // A multipart without the boundary RFC 2046 5.1.1 requires, or with one it does
+            // not allow, has no parts to find, and its body used to be dropped without a
+            // trace. RFC 2045 5.2 recommends reading an invalid Content-Type as plain text,
+            // which is also what the body of such a message usually is
+            this.contentType.parsed.value = 'text/plain';
+            this.contentType.multipart = false;
+        }
+        if (this.contentType.multipart) {
+            // add self to boundary terminator listing
+            this.postalMime.boundaries.push(boundary, this);
+        }
+        this.contentDisposition.parsed = this.parseStructuredHeader(this.contentDisposition.value);
+        // The disposition type is a token, so it ends at the first whitespace. Read whole,
+        // `attachment garbage` was neither attachment nor inline, and a text/html part
+        // declaring it was rendered as the body while Python and mailparser keep it an
+        // attachment. The type of a Content-Type stays as it is: `text/html garbage` is no
+        // html to them either, and reading it as html here would be the reverse mistake
+        const disposition = this.contentDisposition.parsed.value;
+        const dispositionEnd = disposition.search(/[ \t]/);
+        if (dispositionEnd >= 0) {
+            this.contentDisposition.parsed.value = disposition.slice(0, dispositionEnd);
+        }
+        // The token at the start of the value, behind the whitespace a leading comment
+        // leaves: `(comment) base64`, `base64 (comment)` and `base64 x` decode, as they do
+        // for Python. A quoted token does not. `"base64"` is raw base64 to Python and to
+        // mailparser, and decoding it here rendered as markup a body both hand through as
+        // it is. Taking the first token anywhere in the value read it, and `x "base64"`.
+        this.contentTransferEncoding.encoding = (this.stripComments(this.contentTransferEncoding.value)
+            .toLowerCase()
+            .match(/^[ \t]*([\w-]+)/) || ['', ''])[1];
+        this.setupContentDecoder(this.contentTransferEncoding.encoding);
+        // the lines live on in rawHeaderLines and headers, so the raw copies are released
+        this.headerLines = [];
+    }
+    // Ends the header section and sets up the body
+    endHeaders() {
+        this.state = 'body';
+        this.processHeaders();
+    }
+    // Returns true when the line was not consumed: the headers ended with the line before
+    // it, and the parser has to read it again, since the boundary this part declares was
+    // not known yet when the line was checked for one
+    feed(line, lineBreak) {
+        switch (this.state) {
+            case 'header': {
+                if (!line.length) {
+                    this.endHeaders();
+                    return false;
+                }
+                // Counted across the whole message, not per part. A per-node budget lets a
+                // multipart carry the limit again for every part it declares, so a message
+                // many times over the limit still parses.
+                this.postalMime.counters.headerSize += Math.max(line.length, HEADER_LINE_MIN_COST);
+                const maxHeadersSize = this.postalMime.limits.maxHeadersSize;
+                if (this.postalMime.counters.headerSize > maxHeadersSize) {
+                    throw createError('EMAXHEADERSIZE', `Maximum header size of ${maxHeadersSize} bytes exceeded`);
+                }
+                const text = decodeUtf8OrWindows1252(line, headerDecoder);
+                // A line that is neither a header field nor a fold ends the headers, as it
+                // does for Python and for an MTA that stores the header block on its own,
+                // and Go rejects the message for it. Read on as a header here, a Content-Type
+                // or a From behind such a line was honoured where a scanner built on Python
+                // had read it as the first line of a text/plain body.
+                //
+                // A line of nothing but whitespace is a fold (RFC 5322 4.2, obs-FWS), but
+                // broken generators also put one where the empty line that ends the headers
+                // belongs, and reading it as a fold used to turn the whole body into one
+                // more header. The next line decides: a field or a fold keeps it a fold,
+                // anything else ends the headers, as it does for Python
+                if (!isWsp(line[0]) && !FIELD_START.test(text)) {
+                    this.endHeaders();
+                    return true;
+                }
+                this.headerLines.push(text);
+                break;
+            }
+            case 'body':
+                // add line to body. processHeaders installs a decoder before the state
+                // becomes body, and the only time the decoder is released is finalize,
+                // which moves the state on to finished, so the guard only narrows the type
+                if (this.contentDecoder) {
+                    this.contentDecoder.update(line, lineBreak);
+                }
+                break;
+        }
+        return false;
+    }
+}

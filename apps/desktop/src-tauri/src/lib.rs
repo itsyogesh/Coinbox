@@ -1,6 +1,11 @@
 mod commands;
 mod db;
 mod error;
+mod finance;
+mod local_ai;
+mod remote_finance;
+#[cfg(target_os = "macos")]
+mod gmail;
 mod wallet;
 
 use tauri::Manager;
@@ -34,6 +39,7 @@ pub fn run() {
 
             // Initialize Bitcoin state
             let data_dir = app.path().app_data_dir().expect("Failed to get app data dir");
+            app.manage(finance::FinanceState::new(data_dir.clone()));
             let bitcoin_state = commands::BitcoinState::new(data_dir);
             app.manage(bitcoin_state);
 
@@ -41,17 +47,43 @@ pub fn run() {
             let ethereum_state = commands::EthereumState::new(wallet::WalletManager::new());
             app.manage(ethereum_state);
 
-            // Open devtools in debug builds
-            #[cfg(debug_assertions)]
-            {
-                if let Some(window) = app.get_webview_window("main") {
-                    window.open_devtools();
-                }
-            }
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            #[cfg(target_os = "macos")]
+            gmail::gmail_status,
+            #[cfg(target_os = "macos")]
+            gmail::gmail_connect,
+            #[cfg(target_os = "macos")]
+            gmail::gmail_disconnect,
+            #[cfg(target_os = "macos")]
+            gmail::gmail_search,
+            #[cfg(target_os = "macos")]
+            gmail::gmail_message,
+            local_ai::finance_local_question_kind,
+            local_ai::finance_local_model,
+            remote_finance::finance_remote_available,
+            remote_finance::finance_remote_request,
+            finance::finance_status,
+            finance::finance_unlock,
+            finance::finance_lock,
+            finance::finance_restore,
+            finance::finance_backup,
+            finance::finance_books,
+            finance::finance_add_account,
+            finance::finance_inspect_csv,
+            finance::finance_stage,
+            finance::finance_review,
+            finance::finance_discard,
+            finance::finance_confirm,
+            finance::finance_report,
+            finance::finance_source_row,
+            finance::finance_source_file,
+            finance::finance_export,
+            finance::finance_bills,
+            finance::finance_save_bill,
+            finance::finance_remove_bill,
+            finance::finance_export_fiscal_year,
             // Settings commands
             commands::get_settings,
             commands::save_settings,
