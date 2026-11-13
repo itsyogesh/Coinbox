@@ -13,11 +13,11 @@ pnpm install --frozen-lockfile
 COINBOX_FINANCE_DIR="$(mktemp -d)" pnpm tauri:dev
 ```
 
-Use a fresh synthetic vault for the first run. In **Import Inbox**, stage the sample bank and card statements, match the repayment, and confirm. The Personal ledger shows three entries, ₹1,000 in net spending and ₹5,000 in income. Repeating either file keeps those figures. The transfer links to both original statement rows. Choose **Encrypted backup** to save both books and their source documents.
+Follow the [desktop walkthrough](PRIVATE_FINANCE.md#try-the-statement-workflow) with the temporary workspace before importing real data.
 
-The importer accepts INR CSV, one-sheet XLS/XLSX, and rectangular PDF statement tables with a header row. Excel and PDF use the same column-mapping and review screens. Their source download contains the original file. Row numbers for Excel and PDF refer to the extracted table. The PDF adapter supports unencrypted files up to 1 MiB and eight pages. Install Poppler and Tesseract to extract PDF text and scan image-based PDFs. Compare the extracted rows against the original before posting.
+The importer accepts INR CSV, one-sheet XLS/XLSX, and rectangular PDF statement tables with a header row. Excel and PDF use the same column-mapping and review screens. Their source download contains the original file. Row numbers for Excel and PDF refer to the extracted table. The PDF adapter supports unencrypted files up to 1 MiB and eight pages. Install Poppler and Tesseract on the machine running standalone desktop. On macOS with Homebrew, use `brew install poppler tesseract`. Confirm `pdfinfo`, `pdftotext`, `pdftoppm`, and `tesseract` are available in the desktop process’s PATH. The Compose image includes both tools. Compare the extracted rows against the original before posting.
 
-For an email file, download the original message as `.eml`, choose it in **Import Inbox**, select an attachment with **Map statement**, and confirm the column mapping. Coinbox parses the email on the client and only persists files that you explicitly stage.
+For an email file, download the original message as `.eml`, choose it in **Import Inbox**, select an attachment with **Use attachment**, and choose **Review statement** once you have checked the columns. Coinbox parses the email on the client and only persists files that you explicitly stage.
 
 ### Live Gmail on macOS
 
@@ -31,7 +31,7 @@ Open **Import Inbox → Gmail connection → Connect Gmail**. The system browser
 
 ### Ask Coinbox
 
-The dashboard and sidebar open the book's chat. Spending and income answers are calculated from posted entries and link to the contributing source rows. Upcoming bills and pending imports use the same data shown elsewhere in the app. To enable optional desktop question classification, start local Ollama, install a model, and launch Coinbox with `COINBOX_OLLAMA_MODEL` set to its model name. Enable the model in Ask Coinbox for the session. Coinbox sends the question to loopback Ollama and calculates the answer from the ledger itself.
+The dashboard and sidebar open the book's chat. Spending and income answers are calculated from posted entries and link to the contributing source rows. Upcoming bills and pending imports use the same data shown elsewhere in the app. To enable optional desktop question classification, start local Ollama, install a model, and launch Coinbox with `COINBOX_OLLAMA_MODEL` set to its model name. Select **Use on-device help to interpret questions** in Ask Coinbox for the session. Coinbox sends the question to loopback Ollama and calculates the answer from the ledger itself.
 
 ## Run the private server
 
@@ -62,12 +62,12 @@ apps/finance-server/target/debug/coinbox-finance-server init
 apps/finance-server/target/debug/coinbox-finance-server
 ```
 
-Open `http://127.0.0.1:8787` on the host and enter the administrator token. From a second terminal, run `curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/health` and expect HTTP `204`. For ongoing use, put the vault and credentials in persistent locations and initialize the vault once.
+Open `http://127.0.0.1:8787` on the host and enter the administrator token as the access code. From a second terminal, run `curl -fsS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8787/health` and expect HTTP `204`. For ongoing use, put the vault and credentials in persistent locations and initialize the vault once.
 
 ### Connect a phone or desktop
 
 1. Serve the loopback listener through your host's HTTPS reverse proxy on a private LAN or VPN.
-2. Open the private HTTPS URL as admin. Under **Server access**, create a **Device** token for the intended book.
+2. Open the private HTTPS URL as admin. Under **Manage access**, select **Device**, then **Create access code** for the intended book.
 3. On the phone, open the same URL in Safari or Chrome and enter the device token. The responsive workspace can open the ledger, import statements, and export reports. The browser holds its token in memory, so reloading requires signing in again.
 4. For connected Tauri, run `COINBOX_REMOTE_SERVER=https://your-private-host pnpm tauri:dev` and sign in with a device token. An explicit numeric loopback HTTP origin also works for local desktop testing.
 
@@ -96,7 +96,18 @@ Use files named `finance-passphrase` and `finance-admin-token`. The service runs
 
 ### MCP
 
-Configure a client that supports [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and custom bearer headers. Set the URL to `https://<your-private-origin>/api/mcp` and use an assistant token from **Server access**. The endpoint offers three read-only tools for the granted book. Ledger summaries expose amounts and evidence row IDs. Coverage exposes statement dates and review counts. Bills expose recurring charges. Revoke the grant from **Server access** to stop subsequent calls.
+Configure a client that supports [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) and custom bearer headers. Set the URL to `https://<your-private-origin>/api/mcp` and use an assistant token from **Manage access**. The endpoint offers three read-only tools for the granted book. Ledger summaries expose amounts and evidence row IDs. Coverage exposes statement dates and review counts. Bills expose recurring charges. Revoke the grant from **Manage access** to stop subsequent calls.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Coinbox asks for an access code after reload | Enter the same code again. The browser keeps it only until the page reloads or you sign out. |
+| A device can reach the page but cannot open the workspace | Verify the grant covers the intended book and has device scope. Generate a replacement if it was removed. |
+| Desktop PDF import is unavailable | Check the helper commands above from the same shell used to launch Coinbox. Try a CSV or single-sheet Excel statement. |
+| Gmail connection is unavailable | Verify the Desktop OAuth JSON path, Gmail API, consent screen, and test user. Restart standalone Coinbox after changing the configuration. |
+| Health check fails after a restart | Check the service logs, the data directory, the passphrase and admin token files, and the reverse proxy target. |
+| Restoring a backup fails | Check that the target directory is empty, the file is at most 32 MiB, and the passphrase matches the original workspace. |
 
 ## Before moving real data
 

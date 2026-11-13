@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { CreditCard, Landmark, Upload } from "lucide-react";
-import { errorMessage, finance, type Account, type AccountKind, type CsvMapping, type CsvPreview, type DateFormat } from "./api";
+import { errorMessage, FinanceMessage, finance, type Account, type AccountKind, type CsvMapping, type CsvPreview, type DateFormat } from "./api";
 import { EmailImport } from "./EmailImport";
 import sampleBank from "./fixtures/synthetic-bank-inr.csv?raw";
 import sampleCard from "./fixtures/synthetic-card-inr.csv?raw";
@@ -39,7 +39,7 @@ export function ImportForm({ book, accounts, busy, run }: {
     setReading(true);
     setError("");
     try {
-      if (next.size > 1024 * 1024) throw new Error("Choose a statement of up to 1 MiB.");
+      if (next.size > 1024 * 1024) throw new FinanceMessage("Choose a statement of up to 1 MiB.");
       const bytes = Array.from(new Uint8Array(await next.arrayBuffer()));
       const preview = await finance.inspect(next.name, bytes, book);
       const headers = preview.headers;
@@ -94,14 +94,14 @@ export function ImportForm({ book, accounts, busy, run }: {
     void run(async () => {
       const result = await finance.stage(book, { accountId: account.id, name: file.name, bytes: file.bytes, mapping });
       setFile(null);
-      return result.alreadyExists ? "This exact file is already in the book. No rows were added." : "Statement staged for review.";
+      return result.alreadyExists ? "This statement is already in the book." : "Statement ready to review. Choose which transactions to save below.";
     });
   }
 
   return (
     <section className="coinbox-card coinbox-import-form">
       <h2>Import a statement</h2>
-      <p className="coinbox-muted">Choose an bank or credit card statement in INR, with a header row.</p>
+      <p className="coinbox-muted">Choose an INR bank or credit card statement with column headings.</p>
       <label className="coinbox-upload">
         <Upload size={20} aria-hidden="true" />
         <span>{reading ? "Reading statement…" : file?.name ?? "Choose a CSV, Excel, or PDF file"}</span>
@@ -114,9 +114,9 @@ export function ImportForm({ book, accounts, busy, run }: {
       <EmailImport book={book} disabled={busy || reading || file !== null} onSelect={pick} />
       <div className="coinbox-actions">
         <button type="button" className="coinbox-button secondary" disabled={busy || reading}
-          onClick={() => void pick(new File([sampleBank], "synthetic-bank-inr.csv"), "bank")}><Landmark size={15} /> Use sample bank CSV</button>
+          onClick={() => void pick(new File([sampleBank], "synthetic-bank-inr.csv"), "bank")}><Landmark size={15} /> Try sample bank statement</button>
         <button type="button" className="coinbox-button secondary" disabled={busy || reading}
-          onClick={() => void pick(new File([sampleCard], "synthetic-card-inr.csv"), "card")}><CreditCard size={15} /> Use sample card CSV</button>
+          onClick={() => void pick(new File([sampleCard], "synthetic-card-inr.csv"), "card")}><CreditCard size={15} /> Try sample card statement</button>
       </div>
       {error && <p className="coinbox-alert" role="alert">{error}</p>}
       {file && <>
@@ -128,9 +128,9 @@ export function ImportForm({ book, accounts, busy, run }: {
           <button type="submit" className="coinbox-button secondary" disabled={busy || !name.trim()}>Add account</button>
         </form>
         <form onSubmit={stage} className="coinbox-mapping">
-          <div className="coinbox-section-title spread"><h3>Map statement columns</h3><button type="button" className="coinbox-source-link" disabled={busy} onClick={() => setFile(null)}>Clear file</button></div>
-          {/\.pdf$/i.test(file.name) && <p className="coinbox-warning">Compare extracted rows with the original PDF. Scanned statements can contain OCR errors.</p>}
-          <p className="coinbox-muted">{file.preview.rows} data rows. Check the amount sign before staging.</p>
+          <div className="coinbox-section-title spread"><h3>Match your columns</h3><button type="button" className="coinbox-source-link" disabled={busy} onClick={() => setFile(null)}>Clear file</button></div>
+          {/\.pdf$/i.test(file.name) && <p className="coinbox-warning">Check the amounts and dates against the original PDF. Scanned statements can be misread.</p>}
+          <p className="coinbox-muted">{file.preview.rows} rows found. Check which amounts are money in and money out.</p>
           <div className="coinbox-fields">
             <label>Import into account<select value={accountId} required onChange={(event) => {
               const id = event.target.value;
@@ -142,8 +142,8 @@ export function ImportForm({ book, accounts, busy, run }: {
             </select></label>
             <Column label="Date" value={date} set={setDate} headers={file.preview.headers} />
             <Column label="Description" value={description} set={setDescription} headers={file.preview.headers} />
-            <label>Amount layout<select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
-              <option value="signed">One signed amount column</option><option value="split">Separate debit and credit columns</option>
+            <label>How amounts are shown<select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}>
+              <option value="signed">One amount column with plus or minus signs</option><option value="split">Separate debit and credit columns</option>
             </select></label>
             {mode === "signed" ? <Column label="Amount" value={signed} set={setSigned} headers={file.preview.headers} /> : <>
               <Column label="Debit / money out" value={debit} set={setDebit} headers={file.preview.headers} />
@@ -154,14 +154,14 @@ export function ImportForm({ book, accounts, busy, run }: {
               onChange={(event) => setNewestFirst(event.target.value === "newest")}><option value="oldest">Oldest first</option><option value="newest">Newest first</option></select></label>}
           </div>
           <div className="coinbox-actions">
-            {mode === "signed" && <label className="coinbox-check"><input type="checkbox" checked={invert} onChange={(event) => setInvert(event.target.checked)} /> Reverse signs (charges or withdrawals are positive in the file)</label>}
+            {mode === "signed" && <label className="coinbox-check"><input type="checkbox" checked={invert} onChange={(event) => setInvert(event.target.checked)} /> Charges or withdrawals are shown as positive amounts</label>}
             {balance >= 0 && <label className="coinbox-check"><input type="checkbox" checked={owed} onChange={(event) => setOwed(event.target.checked)} /> Balance represents money owed</label>}
           </div>
-          <details><summary>Preview statement columns</summary><div className="coinbox-scroll">
+          <details><summary>Preview the statement</summary><div className="coinbox-scroll">
             <table><thead><tr>{file.preview.headers.map((header, index) => <th key={index}>{header || `Column ${index + 1}`}</th>)}</tr></thead>
               <tbody>{file.preview.examples.map((row, index) => <tr key={index}>{row.map((cell, i) => <td key={i}>{cell}</td>)}</tr>)}</tbody></table>
           </div></details>
-          <button type="submit" className="coinbox-button primary" disabled={busy || !account}>Stage for review</button>
+          <button type="submit" className="coinbox-button primary" disabled={busy || !account}>Review statement</button>
         </form>
       </>}
     </section>

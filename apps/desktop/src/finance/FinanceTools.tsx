@@ -85,7 +85,7 @@ export function FinanceReports({ book, review, busy, run }: { book: string; revi
     <section className="coinbox-card">
       <div className="coinbox-section-title spread"><h2>Statement coverage</h2>
         <div className="coinbox-actions">
-          <label>Fiscal year <select value={year} onChange={(event) => setYear(Number(event.target.value))}>
+          <label>Financial year <select value={year} onChange={(event) => setYear(Number(event.target.value))}>
             {Array.from({ length: Math.min(100, fiscalYear - 1899) }, (_, i) => fiscalYear - i).map((value) => <option key={value} value={value}>{value}–{String(value + 1).slice(-2)}</option>)}
           </select></label>
           <label>Account <select value={account} onChange={(event) => setAccount(event.target.value)}><option value="">All accounts</option>{accounts.map((name) => <option key={name}>{name}</option>)}</select></label>
@@ -101,10 +101,13 @@ export function FinanceReports({ book, review, busy, run }: { book: string; revi
       })}</ul>
     </section>
     <section className="coinbox-card"><div className="coinbox-section-title"><FileText size={19} /><h2>Accountant review pack</h2></div>
-      <p className="coinbox-muted">India · April to March · book-wide ledger and source index for your accountant.</p>
+      <p className="coinbox-muted">Export saved transactions and their statement references for April to March. Both downloads include every account in this book.</p>
       <div className="coinbox-actions">{[false, true].map((evidence) => <button type="button" key={String(evidence)} className="coinbox-button secondary" disabled={busy}
-        onClick={() => void run(async () => `Saved ${await finance.exportFiscalYear(book, year, evidence)}.`, false)}>
-        <Download size={15} />{evidence ? "Export evidence CSV" : "Export fiscal ledger CSV"}</button>)}</div>
+        onClick={() => void run(async () => {
+          await finance.exportFiscalYear(book, year, evidence);
+          return evidence ? "Statement references downloaded." : "Financial year transactions downloaded.";
+        }, false)}>
+        <Download size={15} />{evidence ? "Export statement references" : "Export transactions"}</button>)}</div>
     </section>
   </>;
 }
@@ -165,7 +168,7 @@ export function AskCoinbox({ book, report, review, bills }: { book: string; repo
   return <section className="coinbox-card coinbox-chat" aria-label={`Ask Coinbox for ${book}`}>
     <div className="coinbox-section-title"><div className="coinbox-tile"><Sparkles size={20} /></div><h2>Explore your ledger</h2></div>
     <p className="coinbox-muted">Answers use posted entries, scheduled bills, and statement review in this book.</p>
-    {model && <label className="coinbox-check"><input type="checkbox" checked={useModel} disabled={busy} onChange={(event) => setUseModel(event.target.checked)} /> Use local Ollama model to interpret questions ({model})</label>}
+    {model && <label className="coinbox-check"><input type="checkbox" checked={useModel} disabled={busy} onChange={(event) => setUseModel(event.target.checked)} /> Use on-device help to interpret questions</label>}
     <div className="coinbox-actions">{prompts.map((prompt) => <button type="button" key={prompt} className="coinbox-button secondary" disabled={busy} onClick={() => void ask(prompt)}>{prompt}</button>)}</div>
     <div className="coinbox-chat-history" aria-live="polite">{answers.map((answer, i) => <article key={i}>
       <strong>{answer.question}</strong><p>{answer.text}</p>

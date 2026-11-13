@@ -25,7 +25,7 @@ struct Intent {
 
 #[tauri::command]
 pub async fn finance_local_question_kind(question: String) -> Result<String, String> {
-    let model = finance_local_model().ok_or("Configure a local Ollama model first.")?;
+    let model = finance_local_model().ok_or("Question help is unavailable on this device.")?;
     if question.trim().is_empty() || question.chars().count() > 500 {
         return Err("Enter a question up to 500 characters.".into());
     }
@@ -33,7 +33,7 @@ pub async fn finance_local_question_kind(question: String) -> Result<String, Str
         .no_proxy()
         .redirect(reqwest::redirect::Policy::none())
         .timeout(Duration::from_secs(15))
-        .build().map_err(|_| "Could not start the local model request.")?
+        .build().map_err(|_| "Couldn’t read your question. Try a suggested question.")?
         .post("http://127.0.0.1:11434/api/generate")
         .json(&json!({
             "model": model, "stream": false,
@@ -44,14 +44,14 @@ pub async fn finance_local_question_kind(question: String) -> Result<String, Str
             }},
             "options": { "temperature": 0, "num_predict": 40 }
         }))
-        .send().await.map_err(|_| "Could not reach Ollama on this device.")?
-        .error_for_status().map_err(|_| "Ollama could not run the configured model.")?;
+        .send().await.map_err(|_| "Question help is unavailable. Try a suggested question.")?
+        .error_for_status().map_err(|_| "Question help is unavailable. Try a suggested question.")?;
     let model: ModelResponse = response
         .json()
         .await
-        .map_err(|_| "Ollama returned an invalid response.")?;
+        .map_err(|_| "Couldn’t read your question. Try a suggested question.")?;
     let intent: Intent = serde_json::from_str(&model.response)
-        .map_err(|_| "Ollama returned an invalid classification.")?;
+        .map_err(|_| "Couldn’t read your question. Try a suggested question.")?;
     Ok(match intent.kind.as_str() {
         "spending" | "income" | "bills" | "review" => intent.kind,
         _ => "unknown".into(),

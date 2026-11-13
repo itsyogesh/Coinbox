@@ -26,10 +26,10 @@ export function ServerAccess({ books }: { books: Book[] }) {
   }
 
   return <section className="coinbox-card coinbox-stack">
-    <h2>Server access</h2>
+    <h2>Manage access</h2>
     {error && <p className="coinbox-alert" role="alert">{error}</p>}
     {grants && <>
-      <p className="coinbox-muted">Device access allows imports and exports for one book. Assistant access provides read-only summaries over MCP.</p>
+      <p className="coinbox-muted">Give a device access to import and export for one book, or give an assistant read-only access to its summaries.</p>
       <form className="coinbox-mapping" onSubmit={(event) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -44,15 +44,15 @@ export function ServerAccess({ books }: { books: Book[] }) {
         <label>Access name<input name="name" required maxLength={80} placeholder="e.g. My laptop" /></label>
         <label>Book<select name="book">{books.map((book) => <option key={book.id} value={book.id}>{book.name}</option>)}</select></label>
         <label>Access type<select name="scope"><option value="device">Device</option><option value="assistant">Assistant</option></select></label>
-        <button className="coinbox-button primary" disabled={busy}>Create access token</button>
+        <button className="coinbox-button primary" disabled={busy}>Create access code</button>
       </form>
-      {issued && <div className="coinbox-status" role="status"><label>Copy this token before leaving the page
-        <input aria-label="New access token" value={issued} readOnly onFocus={(event) => event.target.select()} /></label></div>}
+      {issued && <div className="coinbox-status" role="status"><label>Copy this access code before leaving the page. Keep it private.
+        <input aria-label="New access code" value={issued} readOnly onFocus={(event) => event.target.select()} /></label></div>}
       <ul className="coinbox-activity">{grants.map((grant) => <li key={grant.id}>
         <div><strong>{grant.name}</strong><small>{books.find((book) => book.id === grant.book)?.name ?? grant.book} · {grant.scope}</small></div>
         <button className="coinbox-button secondary" type="button" disabled={busy} onClick={() => {
-          if (window.confirm(`Revoke access for ${grant.name}?`)) void run(() => serverGrant({ action: "revoke", id: grant.id }));
-        }}>Revoke</button>
+          if (window.confirm(`Remove access for ${grant.name}?`)) void run(() => serverGrant({ action: "revoke", id: grant.id }));
+        }}>Remove access</button>
       </li>)}</ul>
     </>}
   </section>;

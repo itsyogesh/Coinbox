@@ -29,6 +29,6 @@ void initializeFinance().then(() => root.render(
       </BrowserRouter>
     </QueryClientProvider>
   </React.StrictMode>
-)).catch((error: unknown) => {
-  root.render(<main role="alert">{error instanceof Error ? error.message : String(error)}</main>);
+)).catch(() => {
+  root.render(<main role="alert">Couldn’t open Coinbox. Check your setup and try opening it again.</main>);
 });

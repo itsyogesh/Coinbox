@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Learn to review statements, match a card repayment, and export transactions in Coinbox.">
+  <meta name="theme-color" content="#f7f6ef">
+  <title>Getting started — Coinbox</title>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a href="./"><img src="assets/wordmark.svg" alt="Coinbox" width="136" height="32"></a>
+    <nav aria-label="Main"><a href="./#sample">See an example</a><a href="help.html" aria-current="page">Help</a></nav>
+    <a class="button quiet desktop-link" href="https://github.com/itsyogesh/Coinbox">View source <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="main" class="wrap help-page">
+    <header class="help-title"><p class="eyebrow">Coinbox help</p><h1>Getting started</h1><p class="intro">Review a sample statement, then use the same steps for your own bank or credit card.</p></header>
+    <div class="help-layout">
+      <nav class="contents" aria-label="On this page">
+        <a href="#get-coinbox">Get Coinbox</a><a href="#first-import">Try a sample</a><a href="#formats">Statement formats</a><a href="#email">Import from email</a><a href="#review">Review warnings</a><a href="#reports">Reports and backups</a><a href="#data">Your data</a><a href="#support">Get help</a>
+      </nav>
+      <div class="help-body">
+        <section id="get-coinbox"><h2>Get Coinbox</h2><p>Coinbox is a preview available through its setup guide. If someone has already set up a workspace for you, open the link they shared and enter your access code. A phone browser can open an existing workspace.</p>
+          <p><a class="text-link" href="https://github.com/itsyogesh/Coinbox#readme">Open the setup guide <span aria-hidden="true">↗</span></a></p>
+        </section>
+        <section id="first-import"><h2>Try a sample</h2><ol>
+          <li>Open <strong>Import Inbox</strong> in the <strong>Personal</strong> book. A book keeps a set of accounts and transactions together.</li>
+          <li>Choose <strong>Try sample bank statement</strong>. Select <strong>Add account</strong> for Sample checking. Check the column choices and select <strong>Review statement</strong>.</li>
+          <li>Repeat with <strong>Try sample card statement</strong> and the Sample credit card account. Review both statements before saving either.</li>
+          <li>Under <strong>Review card repayments</strong>, choose <strong>Match as transfer</strong>. Check the salary and bookshop purchase and select <strong>Save decisions</strong>.</li>
+          <li>Open <strong>Overview</strong>. You should see ₹1,000 in net spending and ₹5,000 in income. In <strong>Ledger</strong>, open a statement reference to check the original row.</li>
+        </ol></section>
+        <section id="formats"><h2>Statement formats</h2>
+          <p>Start with CSV or Excel (.xls or .xlsx) for INR bank and credit card statements. Your file needs column headings, a date, a description and either an amount or separate debit and credit columns. Save your statement as a one-sheet Excel workbook.</p>
+          <p>Files can be up to 1 MiB. PDF import, where available, accepts unlocked statements with up to eight pages. Compare every extracted amount and date with the original. If Coinbox can’t read the table, export CSV or Excel from your bank.</p>
+          <p>In <strong>Match your columns</strong>, set the date order as it appears in the file. If the statement shows withdrawals or charges as positive numbers in one amount column, tick the matching option. Choose the running balance only if the statement has one.</p>
+        </section>
+        <section id="email"><h2>Import a statement from email</h2>
+          <ol><li>Download the statement attachment from your mail app and select it in <strong>Import Inbox</strong>. You can also download the original email as an .eml file.</li>
+          <li>For an email file, choose it in <strong>Import Inbox</strong> and select <strong>Use attachment</strong> next to the statement.</li>
+          <li>Check the columns, then select <strong>Review statement</strong>. Coinbox keeps the attachment once you select Review statement.</li></ol>
+          <p>If <strong>Connect Gmail</strong> is available on your desktop, you can use it to find a statement. Google grants read-only mailbox access. Coinbox searches the label and optional sender you enter, then opens the message you choose.</p>
+        </section>
+        <section id="review"><h2>Review warnings</h2>
+          <dl><dt>Possible duplicate</dt><dd>Open both statement references. If they show the same transaction, skip the extra row.</dd>
+          <dt>Running balance doesn’t add up</dt><dd>Check the amounts, balance column, and whether the newest or oldest row comes first.</dd>
+          <dt>Possible card repayment</dt><dd>Match the bank withdrawal and card payment when they refer to the same repayment.</dd></dl>
+          <p>Choose <strong>Review later</strong> if you’re unsure. When you’re ready, <strong>Save decisions</strong> adds your selected transactions to the Ledger.</p>
+        </section>
+        <section id="reports"><h2>Reports and backups</h2>
+          <p>In <strong>Reports</strong>, pick the April-to-March financial year. Export transactions and statement references for your accountant. Both files cover the full book. Use <strong>Statement coverage</strong> to see months that may need more statements.</p>
+          <p>If you see <strong>Encrypted backup</strong>, use it to download a copy of your workspace. Keep the passphrase separately. For a fresh desktop setup, choose <strong>Restore a backup</strong> and enter the passphrase used to create it. For a shared workspace, ask the person who set it up to restore the copy.</p>
+        </section>
+        <section id="data"><h2>Where your statements are kept</h2>
+          <p>This site uses sample data. When you use Coinbox on your own desktop, your imported statements and transactions are stored there in encrypted form. If you open a workspace someone set up for you, that workspace keeps the statements you import.</p>
+          <p>Encrypted backups need the original passphrase. Downloaded statements and CSV exports can be read by anyone with access to those files.</p>
+        </section>
+        <section id="support"><h2>Get help</h2><p>When reporting an issue, include what you clicked, what you expected, and which Coinbox version you used. Use the sample statements to demonstrate problems and leave personal statements, access codes, and passphrases out of the report.</p><p><a class="text-link" href="https://github.com/itsyogesh/Coinbox/issues">Report an issue on GitHub <span aria-hidden="true">↗</span></a></p></section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer wrap">
+    <a href="./"><img src="assets/wordmark.svg" alt="Coinbox" width="108" height="28"></a>
+    <nav aria-label="Footer"><a href="help.html">Help</a><a href="https://github.com/itsyogesh/Coinbox">GitHub</a><a href="https://github.com/itsyogesh/Coinbox/issues">Report an issue</a></nav>
+  </footer>
+</body>
+</html>

@@ -1,9 +1,10 @@
 # Coinbox implementation status
 
-This handoff covers the private finance work in [PR #49](https://github.com/itsyogesh/Coinbox/pull/49). Start with the [desktop walkthrough](PRIVATE_FINANCE.md) or the [operator runbook](COINBOX_SELF_HOST.md).
+This handoff covers the private finance work in [PR #49](https://github.com/itsyogesh/Coinbox/pull/49). Start with the [desktop walkthrough](PRIVATE_FINANCE.md), [operator runbook](COINBOX_SELF_HOST.md), or [public release checklist](COINBOX_RELEASE.md).
 
 | Area | Included | Remaining |
 | --- | --- | --- |
+| Public website | Static site, sample files, worked example, and Help | Publish to a public domain |
 | Desktop | Standalone encrypted vault, connected finance, and the existing crypto wallet | Signed distribution |
 | Mobile web | Responsive finance UI through the private server | Physical iPhone and Android testing on the target host |
 | Native mobile | Planned iOS and Android clients | Pairing and secure credential storage, capture, offline drafts, sync, and signed builds |
@@ -39,8 +40,9 @@ The PR records a passing workspace typecheck, frontend build, 101 desktop Rust t
 ```sh
 pnpm typecheck
 pnpm build
+pnpm site:build
 cargo test --locked --manifest-path packages/finance/Cargo.toml
-cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+cargo test --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
 cargo build --locked --manifest-path apps/finance-server/Cargo.toml
 ```
 

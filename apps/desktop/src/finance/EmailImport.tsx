@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FileText, Mail } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { errorMessage, remoteFinance } from "./api";
+import { errorMessage, FinanceMessage, remoteFinance } from "./api";
 
 type Message = { subject: string; sender: string; attachments: File[]; unavailable: number };
 
@@ -23,7 +23,7 @@ export function EmailImport({ book, disabled, onSelect }: {
     setBusy(true);
     try {
       if (!/\.eml$/i.test(file.name) || !file.size || file.size > 20 * 1024 * 1024) {
-        throw new Error("Choose a non-empty .eml file up to 20 MiB.");
+        throw new FinanceMessage("Choose a downloaded email of up to 20 MiB.");
       }
       const { default: PostalMime } = await import("./vendor/postal-mime/postal-mime.js");
       const parsed = await PostalMime.parse(await file.arrayBuffer(), {
@@ -42,7 +42,7 @@ export function EmailImport({ book, disabled, onSelect }: {
       });
       setMessage({ subject: parsed.subject?.slice(0, 240) || "Untitled message", sender: parsed.from?.address?.slice(0, 180) || "Unknown sender", attachments, unavailable });
     } catch (err) {
-      if (id === request.current) setError(errorMessage(err));
+      if (id === request.current) setError(errorMessage(err, "Couldn’t read this email. Try downloading the statement and importing it directly."));
     } finally {
       if (id === request.current) setBusy(false);
     }
@@ -71,10 +71,10 @@ export function EmailImport({ book, disabled, onSelect }: {
       {message.attachments.length === 0 && <p>No CSV, Excel, or PDF attachments of up to 1 MiB were found.</p>}
       {message.attachments.map((file, index) => <div key={index} className="coinbox-section-title spread">
         <span><FileText size={15} aria-hidden="true" /> {file.name}</span>
-        <button type="button" className="coinbox-button secondary" disabled={disabled} onClick={() => void onSelect(file)}>Map statement</button>
+        <button type="button" className="coinbox-button secondary" disabled={disabled} onClick={() => void onSelect(file)}>Use attachment</button>
       </div>)}
       {message.unavailable > 0 && <small className="coinbox-muted">{message.unavailable} unsupported or oversized attachments.</small>}
-      <p className="coinbox-muted">Coinbox reads the email on this device. Only a statement you stage is saved.</p>
+      <p className="coinbox-muted">Coinbox reads the email on this device and keeps the selected attachment when you choose Review statement.</p>
     </div>}
   </div>;
 }
@@ -106,7 +106,7 @@ function GmailImport({ book, disabled, onMessage }: { book: string; disabled: bo
   return <section className="coinbox-email-review">
     <h3>Gmail connection</h3>
     <p className="coinbox-muted">Gmail grants read-only mailbox access. Coinbox searches the label and sender you enter and opens the message you select.</p>
-    {status && !status.configured && <p>Set COINBOX_GMAIL_CLIENT_FILE to your Google Desktop OAuth client JSON and restart Coinbox.</p>}
+    {status && !status.configured && <p>Gmail connection is unavailable. You can still import a downloaded statement or email.</p>}
     {status?.configured && !status.connected && <button type="button" className="coinbox-button primary" disabled={disabled || busy} onClick={() => void run(async () => {
       await invoke("gmail_connect", { book });
       setStatus(await invoke<GmailStatus>("gmail_status", { book }));

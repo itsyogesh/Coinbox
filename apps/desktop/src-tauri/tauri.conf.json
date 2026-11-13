@@ -33,8 +33,8 @@
     "icon": [],
     "resources": [],
     "category": "Finance",
-    "shortDescription": "Multi-chain portfolio intelligence platform",
-    "longDescription": "Coinbox is a local-first, multi-chain cryptocurrency portfolio tracker with AI-powered transaction categorization and comprehensive tax reporting."
+    "shortDescription": "Statement review and desktop wallets",
+    "longDescription": "Review INR bank and credit card statements, match repayments, and export transactions. Coinbox also includes a desktop crypto wallet."
   },
   "plugins": {
     "shell": {

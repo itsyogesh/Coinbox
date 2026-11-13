@@ -119,7 +119,7 @@ impl Vault {
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         require_book(&tx, book)?;
         if choices.request_id.is_empty() || choices.request_id.len() > 100 {
-            return Err(invalid("A confirmation needs a request ID."));
+            return Err(invalid("Refresh the review and try saving again."));
         }
         let hash = digest(&serde_json::to_vec(choices)?);
         let receipt: Option<(String, i64, i64)> = tx
@@ -133,7 +133,7 @@ impl Vault {
         if let Some((previous, posted, skipped)) = receipt {
             if previous != hash {
                 return Err(invalid(
-                    "That confirmation ID belongs to a different selection.",
+                    "The selection changed. Refresh the review before saving.",
                 ));
             }
             return Ok(ConfirmationResult { posted, skipped });
@@ -182,7 +182,7 @@ impl Vault {
             if duplicate_for(&tx, book, &bank, false)?.is_some()
                 || duplicate_for(&tx, book, &card, false)?.is_some()
             {
-                return Err(invalid("A repayment row matches a posted row in another statement. Review the duplicate first."));
+                return Err(invalid("This repayment may already be saved from another statement. Review the possible duplicate first."));
             }
             pairs.push((bank, card));
         }
@@ -195,7 +195,7 @@ impl Vault {
                     || duplicate_for(&tx, book, &row, true)?.is_some()
                     || !transfer_matches(&tx, book, &row)?.is_empty())
             {
-                return Err(invalid("A selected row has a review warning. Refresh the review and confirm it individually."));
+                return Err(invalid("A selected row has a review warning. Refresh the review and choose Save anyway if the transaction is correct."));
             }
             posts.push(row);
         }
@@ -322,7 +322,7 @@ impl Vault {
 
 pub(crate) fn fiscal_period(start_year: i32) -> Result<(String, String)> {
     if !(1900..9999).contains(&start_year) {
-        return Err(invalid("Enter a valid fiscal start year."));
+        return Err(invalid("Choose a valid financial year."));
     }
     Ok((
         format!("{start_year:04}-04-01"),

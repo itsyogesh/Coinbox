@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
-  ArrowLeftRight, CalendarDays, FileText, Inbox, Landmark, LayoutDashboard, List, PanelLeftClose, PanelLeftOpen,
+  ArrowLeftRight, CalendarDays, CircleHelp, FileText, Inbox, Landmark, LayoutDashboard, List, PanelLeftClose, PanelLeftOpen,
   Settings, Sparkles, Wallet,
 } from "lucide-react";
 import mark from "@/assets/finance/mark.svg";
@@ -19,13 +19,13 @@ const navigation = [
 const features = [
   { label: "Accounts", icon: Landmark, path: "/accounts" },
   { label: "Bills", icon: CalendarDays, path: "/bills" },
-  { label: "Reports & tax", icon: FileText, path: "/reports" },
+  { label: "Reports", icon: FileText, path: "/reports" },
+  { label: "Help", icon: CircleHelp, path: "/help" },
 ];
 const walletNavigation = [
   { label: "Wallets", icon: Wallet, path: "/wallets" },
   { label: "Crypto overview", icon: LayoutDashboard, path: "/crypto" },
   { label: "Crypto transactions", icon: ArrowLeftRight, path: "/transactions" },
-  { label: "Tax reports", icon: FileText, path: "/tax" },
   { label: "Settings", icon: Settings, path: "/settings" },
 ];
 

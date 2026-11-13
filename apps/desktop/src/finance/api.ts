@@ -103,7 +103,7 @@ async function serverRequest<T>(path: string, data?: object, download?: string):
     catch (error) {
       if (error === "COINBOX_REMOTE_UNAUTHORIZED") {
         endSession(requestToken);
-        throw new Error("This access token is invalid or has been revoked.");
+        throw new FinanceMessage("This access code is invalid or has been removed. Check it or ask for a new code.");
       }
       throw error;
     }
@@ -114,9 +114,15 @@ async function serverRequest<T>(path: string, data?: object, download?: string):
     body: JSON.stringify(data ?? {}),
   });
   if (!response.ok) {
-    if (response.status === 401) endSession(requestToken);
+    if (response.status === 401) {
+      endSession(requestToken);
+      throw new FinanceMessage("This access code is invalid or has been removed. Check it or ask for a new code.");
+    }
+    if (response.status === 413) throw new FinanceMessage("Choose a smaller file and try again.");
+    if (response.status >= 500) throw new FinanceMessage("Coinbox couldn’t complete this action. Try again.");
     const payload: { error?: string } = await response.json().catch(() => ({}));
-    throw new Error(payload.error ?? `Coinbox server returned HTTP ${response.status}.`);
+    if (typeof payload.error === "string") throw new FinanceMessage(payload.error);
+    throw new FinanceMessage("Coinbox couldn’t complete this action. Try again.");
   }
   if (download) {
     const url = URL.createObjectURL(await response.blob());
@@ -169,7 +175,7 @@ const remote: typeof desktop = {
     catch (error) { token = ""; throw error; }
   },
   lock: async () => { token = ""; },
-  restore: async () => { throw new Error("Restore server backups on the host."); },
+  restore: async () => { throw new FinanceMessage("Ask the person who set up this workspace to restore your backup."); },
   backup: () => serverRequest("admin/backup", {}, "coinbox-finance-backup.sqlite3"),
   books: () => serverRequest("books"),
   bills: (book) => bookRequest(book, "bills"),
@@ -199,6 +205,12 @@ export function inr(amount: string | null) {
   return `${negative ? "−" : ""}₹${whole}.${digits.slice(-2)}`;
 }
 
-export function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+export class FinanceMessage extends Error {}
+
+export function errorMessage(error: unknown, fallback = "Coinbox couldn’t complete this action. Try again.") {
+  if (error instanceof FinanceMessage) return error.message;
+  // Tauri commands return plain-language errors as strings. Exceptions from the
+  // browser or its file readers use the generic message.
+  if (isTauri() && typeof error === "string" && /^[A-Z].*[.!?]$/.test(error)) return error;
+  return fallback;
 }

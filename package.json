@@ -10,7 +10,8 @@
     "tauri:build": "pnpm --filter @coinbox/desktop tauri:build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "site:build": "node apps/website/build.mjs"
   },
   "keywords": [
     "cryptocurrency",
